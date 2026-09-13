@@ -2,10 +2,12 @@
 #include "sony/protocol/ProtocolV2.h"
 #include "sony/protocol/FrameCodec.h"
 #include "sony/transport/FakeTransport.h"
+#include "ReplyingFakeTransport.h"
 
 using namespace sony;
 using namespace sony::protocol;
 using namespace sony::transport;
+using sony::test::ReplyingFakeTransport;
 
 TEST_CASE("ProtocolV2: uses opcode 0x22 for battery request", "[protocol][v2]")
 {
@@ -39,7 +41,7 @@ TEST_CASE("ProtocolV2: uses opcode 0x22 for battery request", "[protocol][v2]")
 
 TEST_CASE("ProtocolV2: handles noise control query and command", "[protocol][v2]")
 {
-    FakeTransport fake;
+    ReplyingFakeTransport fake;
     SonyProtocolSession session(&fake);
     session.connect("11:22:33:44:55:66");
 
@@ -59,7 +61,7 @@ TEST_CASE("ProtocolV2: handles noise control query and command", "[protocol][v2]
 
     SECTION("setNoiseControl sends V2 layout")
     {
-        fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 0 }));
+        fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
 
         NoiseControlState state{
             .mode = NoiseControlMode::NoiseCancelling,
@@ -76,7 +78,7 @@ TEST_CASE("ProtocolV2: handles noise control query and command", "[protocol][v2]
 
 TEST_CASE("ProtocolV2: handles equalizer queries and settings", "[protocol][v2]")
 {
-    FakeTransport fake;
+    ReplyingFakeTransport fake;
     SonyProtocolSession session(&fake);
     session.connect("11:22:33:44:55:66");
 
@@ -96,7 +98,7 @@ TEST_CASE("ProtocolV2: handles equalizer queries and settings", "[protocol][v2]"
 
     SECTION("setEqualizerPreset sends command")
     {
-        fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 0 }));
+        fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
         v2.setEqualizerPreset(0x16);
 
         REQUIRE(fake.sentCount() == 1);
@@ -106,7 +108,7 @@ TEST_CASE("ProtocolV2: handles equalizer queries and settings", "[protocol][v2]"
 
     SECTION("setEqualizerCustom sends clamped bands")
     {
-        fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 0 }));
+        fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
         v2.setEqualizerCustom(5, { -2, 0, 3, 7, 10 });
 
         REQUIRE(fake.sentCount() == 1);
@@ -117,7 +119,7 @@ TEST_CASE("ProtocolV2: handles equalizer queries and settings", "[protocol][v2]"
 
 TEST_CASE("ProtocolV2: handles DSEE query and control", "[protocol][v2]")
 {
-    FakeTransport fake;
+    ReplyingFakeTransport fake;
     SonyProtocolSession session(&fake);
     session.connect("11:22:33:44:55:66");
 
@@ -129,7 +131,7 @@ TEST_CASE("ProtocolV2: handles DSEE query and control", "[protocol][v2]")
     bool dsee = v2.getDsee();
     REQUIRE(dsee == true);
 
-    fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 1 }));
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 1 } });
     v2.setDsee(false);
 
     auto sent = FrameCodec::decode(fake.lastSentFrame());

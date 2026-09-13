@@ -2,10 +2,12 @@
 #include "sony/protocol/ProtocolV1.h"
 #include "sony/protocol/FrameCodec.h"
 #include "sony/transport/FakeTransport.h"
+#include "ReplyingFakeTransport.h"
 
 using namespace sony;
 using namespace sony::protocol;
 using namespace sony::transport;
+using sony::test::ReplyingFakeTransport;
 
 namespace {
 
@@ -120,12 +122,12 @@ TEST_CASE("ProtocolV1: decodes noise-control readback", "[protocol][v1]")
 
 TEST_CASE("ProtocolV1: sets noise control with V1 packet layout", "[protocol][v1]")
 {
-    FakeTransport fake;
+    ReplyingFakeTransport fake;
     SonyProtocolSession session(&fake);
     session.connect("11:22:33:44:55:66");
 
     // Host sends command and awaits ACK
-    fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 0 }));
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
     ProtocolV1 v1(session);
 
     SECTION("ambient sound carries the level and focus-on-voice")
@@ -178,16 +180,16 @@ TEST_CASE("ProtocolV1: reads the equalizer behind inquired type 0x01", "[protoco
 
 TEST_CASE("ProtocolV1: writes equalizer presets and custom bands", "[protocol][v1]")
 {
-    FakeTransport fake;
+    ReplyingFakeTransport fake;
     SonyProtocolSession session(&fake);
     session.connect("11:22:33:44:55:66");
     ProtocolV1 v1(session);
 
-    fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 0 }));
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
     v1.setEqualizerPreset(0x16);
     REQUIRE(FrameCodec::decode(fake.sentFrames()[0]).payload == std::vector<uint8_t>{0x58, 0x01, 0x16, 0x00});
 
-    fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 1 }));
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 1 } });
     v1.setEqualizerCustom(5, {-10, 10, 0, 3, -3});
     REQUIRE(FrameCodec::decode(fake.sentFrames()[1]).payload
             == std::vector<uint8_t>{0x58, 0x01, 0xa0, 0x06, 15, 0, 20, 10, 13, 7});
@@ -217,20 +219,20 @@ TEST_CASE("ProtocolV1: reads firmware version and codec", "[protocol][v1]")
 
 TEST_CASE("ProtocolV1: sends VPT and sound position commands", "[protocol][v1]")
 {
-    FakeTransport fake;
+    ReplyingFakeTransport fake;
     SonyProtocolSession session(&fake);
     session.connect("11:22:33:44:55:66");
 
     ProtocolV1 v1(session);
 
-    fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 0 }));
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
     v1.setVpt(3); // Concert Hall
 
     REQUIRE(fake.sentCount() == 1);
     auto vptFrame = FrameCodec::decode(fake.sentFrames()[0]);
     REQUIRE(vptFrame.payload == std::vector<uint8_t>{0x48, 0x01, 0x03});
 
-    fake.queueIncoming(FrameCodec::encode(SonyFrame{ .type = DataType::Ack, .sequence = 1 }));
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 1 } });
     v1.setSoundPosition(1); // Front Left
 
     REQUIRE(fake.sentCount() == 2);
