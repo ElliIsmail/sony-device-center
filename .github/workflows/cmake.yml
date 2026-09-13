@@ -129,9 +129,12 @@ jobs:
         run: |
           cmake --build build-asan --target sony-protocol-tests sony-transport-tests sony-core-tests
 
+      # Only the three library test targets are built above, so the app-level
+      # tests have no binary to start. The regular matrix job covers them.
       - name: Run tests with sanitizers
         env:
           ASAN_OPTIONS: "detect_leaks=0:abort_on_error=1"
           UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
         run: |
-          ctest --test-dir build-asan --output-on-failure --no-tests=error
+          ctest --test-dir build-asan --output-on-failure --no-tests=error \
+            -E '^(simulated-app-smoke|device-controller-worker-integration)$'
