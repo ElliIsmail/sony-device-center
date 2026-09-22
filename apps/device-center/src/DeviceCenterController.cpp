@@ -30,6 +30,7 @@ DeviceCenterController::DeviceCenterController(QObject* parent, std::shared_ptr<
     QSettings settings("SonyBridge", "SonyDeviceCenter");
     _currentLanguage = settings.value("language", "en").toString();
     _minimizeToTray = settings.value("minimizeToTray", true).toBool();
+    _localApiEnabled = settings.value("localApi", true).toBool();
     _backend = new DeviceBackend(std::move(service));
     _backend->moveToThread(&_worker);
     connect(&_worker, &QThread::started, _backend, &DeviceBackend::start);
@@ -227,6 +228,14 @@ void DeviceCenterController::setMinimizeToTray(bool enable) {
     QSettings settings("SonyBridge", "SonyDeviceCenter");
     settings.setValue("minimizeToTray", enable);
     emit minimizeToTrayChanged();
+}
+
+void DeviceCenterController::setLocalApiEnabled(bool enable) {
+    if (_localApiEnabled == enable) return;
+    _localApiEnabled = enable;
+    QSettings settings("SonyBridge", "SonyDeviceCenter");
+    settings.setValue("localApi", enable);
+    emit localApiEnabledChanged();
 }
 
 QString DeviceCenterController::appVersion() const {

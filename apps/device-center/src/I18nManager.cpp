@@ -61,6 +61,8 @@ void I18nManager::_initTranslations() {
     en["minimize_to_tray_desc"]= "Keep running in the system tray when the window is minimized or closed.";
     en["tray_show"]          = "Show Window";
     en["tray_quit"]          = "Quit";
+    en["local_api"]            = "Local API for Stream Deck";
+    en["local_api_desc"]       = "Lets tools on this computer, like the Stream Deck plugin, read the battery and switch modes (127.0.0.1:47821).";
     en["speak_to_chat"]       = "Speak-to-Chat";
     en["language"]            = "Display Language";
     en["language_desc"]       = "Select your preferred language for the user interface.";
@@ -106,6 +108,8 @@ void I18nManager::_initTranslations() {
     pt["minimize_to_tray_desc"]= "Continua em execução na bandeja do sistema ao minimizar ou fechar a janela.";
     pt["tray_show"]          = "Mostrar Janela";
     pt["tray_quit"]          = "Sair";
+    pt["local_api"]            = "API Local para Stream Deck";
+    pt["local_api_desc"]       = "Permite que ferramentas deste computador, como o plugin do Stream Deck, leiam a bateria e troquem de modo (127.0.0.1:47821).";
     pt["language"]            = "Idioma de Exibição";
     pt["language_desc"]       = "Selecione seu idioma preferido para a interface.";
     pt["about_app"]           = "Sobre o Aplicativo";
@@ -150,6 +154,8 @@ void I18nManager::_initTranslations() {
     es["minimize_to_tray_desc"]= "Sigue ejecutándose en la bandeja del sistema al minimizar o cerrar la ventana.";
     es["tray_show"]          = "Mostrar Ventana";
     es["tray_quit"]          = "Salir";
+    es["local_api"]            = "API Local para Stream Deck";
+    es["local_api_desc"]       = "Permite que herramientas de este equipo, como el plugin de Stream Deck, lean la batería y cambien de modo (127.0.0.1:47821).";
     es["language"]            = "Idioma";
     es["language_desc"]       = "Seleccione su idioma preferido para la interfaz.";
     es["about_app"]           = "Acerca de la Aplicación";
@@ -194,6 +200,8 @@ void I18nManager::_initTranslations() {
     de["minimize_to_tray_desc"]= "Läuft im Infobereich weiter, wenn das Fenster minimiert oder geschlossen wird.";
     de["tray_show"]          = "Fenster anzeigen";
     de["tray_quit"]          = "Beenden";
+    de["local_api"]            = "Lokale API für Stream Deck";
+    de["local_api_desc"]       = "Erlaubt Tools auf diesem Computer, etwa dem Stream-Deck-Plugin, den Akku zu lesen und Modi zu wechseln (127.0.0.1:47821).";
     de["language"]            = "Sprache";
     de["language_desc"]       = "Wählen Sie Ihre bevorzugte Sprache für die Benutzeroberfläche.";
     de["about_app"]           = "Über die Anwendung";
@@ -238,6 +246,8 @@ void I18nManager::_initTranslations() {
     fr["minimize_to_tray_desc"]= "Continue de fonctionner dans la zone de notification lorsque la fenêtre est réduite ou fermée.";
     fr["tray_show"]          = "Afficher la Fenêtre";
     fr["tray_quit"]          = "Quitter";
+    fr["local_api"]            = "API Locale pour Stream Deck";
+    fr["local_api_desc"]       = "Permet aux outils de cet ordinateur, comme le plugin Stream Deck, de lire la batterie et de changer de mode (127.0.0.1:47821).";
     fr["language"]            = "Langue d'Affichage";
     fr["language_desc"]       = "Sélectionnez votre langue préférée pour l'interface utilisateur.";
     fr["about_app"]           = "À propos de l'application";
@@ -282,6 +292,8 @@ void I18nManager::_initTranslations() {
     ja["minimize_to_tray_desc"]= "ウィンドウを最小化または閉じたときにシステムトレイで動作し続けます。";
     ja["tray_show"]          = "ウィンドウを表示";
     ja["tray_quit"]          = "終了";
+    ja["local_api"]            = "Stream Deck用ローカルAPI";
+    ja["local_api_desc"]       = "Stream Deckプラグインなど、このPC上のツールがバッテリー残量の取得やモード切替を行えるようにします（127.0.0.1:47821）。";
     ja["speak_to_chat"]       = "スピーク・トゥ・チャット";
     ja["language"]            = "表示言語";
     ja["language_desc"]       = "UIの表示言語を選択します。";

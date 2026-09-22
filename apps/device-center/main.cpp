@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "DeviceCenterController.h"
+#include "LocalApi.h"
 #include "SystemTray.h"
 
 int main(int argc, char *argv[]) {
@@ -34,6 +35,8 @@ int main(int argc, char *argv[]) {
     app.setWindowIcon(QIcon(":/resources/brand/app-icon.png"));
 
     sony::devicecenter::DeviceCenterController controller;
+    // Local HTTP API for the Stream Deck plugin; follows the Settings switch.
+    sony::devicecenter::LocalApi localApi(&controller);
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("controller", &controller);

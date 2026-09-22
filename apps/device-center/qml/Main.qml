@@ -1961,7 +1961,7 @@ ApplicationWindow {
                     // Card 1: System & Interface Preferences
                     Card {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: controller.trayAvailable ? 250 : 180
+                        Layout.preferredHeight: controller.trayAvailable ? 320 : 250
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -2063,6 +2063,59 @@ ApplicationWindow {
                                 NeoSwitch {
                                     confirmedChecked: controller.minimizeToTray
                                     onToggled: controller.setMinimizeToTray(checked)
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: window.line
+                            }
+
+                            // Row: Local API (Stream Deck plugin)
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 16
+
+                                Rectangle {
+                                    Layout.preferredWidth: 38
+                                    Layout.preferredHeight: 38
+                                    radius: 11
+                                    color: Qt.rgba(window.accent.r, window.accent.g, window.accent.b, 0.14)
+                                    border.width: 1
+                                    border.color: Qt.rgba(window.accent.r, window.accent.g, window.accent.b, 0.35)
+
+                                    Glyph {
+                                        anchors.centerIn: parent
+                                        path: window.icons.sliders
+                                        size: 18
+                                        color: window.accentSoft
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 3
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        text: window.tr("local_api")
+                                        color: window.txt
+                                        font.pixelSize: 14
+                                        font.weight: Font.DemiBold
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        textFormat: Text.PlainText
+                                        text: window.tr("local_api_desc")
+                                        color: window.txtDim
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                NeoSwitch {
+                                    confirmedChecked: controller.localApiEnabled
+                                    onToggled: controller.setLocalApiEnabled(checked)
                                 }
                             }
 
