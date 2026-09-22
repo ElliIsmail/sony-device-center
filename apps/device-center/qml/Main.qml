@@ -1111,6 +1111,44 @@ ApplicationWindow {
                                 }
                             }
 
+                            // Compact ambient level. Dragging it also switches to ambient,
+                            // like the slider on the Noise Control page.
+                            RowLayout {
+                                Layout.alignment: Qt.AlignHCenter
+                                Layout.topMargin: 14
+                                Layout.preferredWidth: 300
+                                Layout.maximumWidth: 300
+                                spacing: 12
+                                visible: controller.hasAmbient
+                                opacity: controller.noiseControlMode === "ambient" ? 1.0 : 0.55
+                                Behavior on opacity { NumberAnimation { duration: window.tSlow } }
+
+                                Glyph {
+                                    path: window.icons.mic
+                                    size: 14
+                                    color: window.ambientWarm
+                                }
+
+                                NeoSlider {
+                                    id: overviewAmbientSlider
+                                    Layout.fillWidth: true
+                                    from: 1; to: 20; stepSize: 1
+                                    enabled: controller.connected
+                                    confirmedValue: controller.ambientLevel
+                                    onMoved: controller.setAmbient(Math.round(value), controller.focusOnVoice)
+                                }
+
+                                Text {
+                                    textFormat: Text.PlainText
+                                    Layout.preferredWidth: 20
+                                    horizontalAlignment: Text.AlignRight
+                                    text: Math.round(overviewAmbientSlider.value)
+                                    color: window.txtDim
+                                    font.pixelSize: 12
+                                    font.weight: Font.DemiBold
+                                }
+                            }
+
                             // Secondary: a link to another screen, not a fourth mode.
                             PillButton {
                                 Layout.alignment: Qt.AlignHCenter
