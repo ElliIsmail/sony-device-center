@@ -1,0 +1,4 @@
+node_modules/
+com.sonydevicecenter.sdPlugin/bin/
+com.sonydevicecenter.sdPlugin/logs/
+*.streamDeckPlugin

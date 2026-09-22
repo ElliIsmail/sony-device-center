@@ -1,0 +1,25 @@
+{
+  "name": "sony-device-center-streamdeck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stream Deck plugin for Sony Device Center: battery, noise control and Speak-to-Chat keys",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "link": "streamdeck link com.sonydevicecenter.sdPlugin",
+    "restart": "streamdeck restart com.sonydevicecenter",
+    "validate": "streamdeck validate com.sonydevicecenter.sdPlugin",
+    "pack": "streamdeck pack com.sonydevicecenter.sdPlugin --force"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@elgato/streamdeck": "^3.0.0"
+  },
+  "devDependencies": {
+    "@elgato/cli": "^1.10.0",
+    "@types/node": "^20.19.43",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

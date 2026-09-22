@@ -1,0 +1,47 @@
+{
+	"Name": "Sony Device Center",
+	"Version": "0.1.0.0",
+	"Author": "Sony Device Center contributors",
+	"Actions": [
+		{
+			"Name": "Battery",
+			"UUID": "com.sonydevicecenter.battery",
+			"Icon": "imgs/actions/battery",
+			"Tooltip": "Live battery level of your Sony headphones.",
+			"Controllers": ["Keypad"],
+			"DisableAutomaticStates": true,
+			"States": [{ "Image": "imgs/actions/battery", "ShowTitle": false }]
+		},
+		{
+			"Name": "Noise Control",
+			"UUID": "com.sonydevicecenter.noise-control",
+			"Icon": "imgs/actions/noise-control",
+			"Tooltip": "Shows the noise control mode. Press to cycle Noise Cancelling, Ambient Sound and Off.",
+			"Controllers": ["Keypad"],
+			"DisableAutomaticStates": true,
+			"States": [{ "Image": "imgs/actions/noise-control", "ShowTitle": false }]
+		},
+		{
+			"Name": "Speak-to-Chat",
+			"UUID": "com.sonydevicecenter.speak-to-chat",
+			"Icon": "imgs/actions/speak-to-chat",
+			"Tooltip": "Shows whether Speak-to-Chat is on. Press to toggle it.",
+			"Controllers": ["Keypad"],
+			"DisableAutomaticStates": true,
+			"States": [{ "Image": "imgs/actions/speak-to-chat", "ShowTitle": false }]
+		}
+	],
+	"Category": "Sony Device Center",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Battery, noise control and Speak-to-Chat for Sony headphones, through the Sony Device Center desktop app.",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 3,
+	"Software": { "MinimumVersion": "7.1" },
+	"OS": [
+		{ "Platform": "windows", "MinimumVersion": "10" },
+		{ "Platform": "mac", "MinimumVersion": "12" }
+	],
+	"Nodejs": { "Version": "24" },
+	"UUID": "com.sonydevicecenter"
+}
