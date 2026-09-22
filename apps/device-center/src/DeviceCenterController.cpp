@@ -78,7 +78,10 @@ void DeviceCenterController::_applySnapshot(const QByteArray& data) {
     _isCharging = _connected && battery.value("charging").toBool();
     const auto nc = s.value("noiseControl").toObject();
     _noiseControlMode = _connected && valid("noiseControl") ? nc.value("mode").toString() : "unknown";
-    _ambientLevel = nc.value("ambientLevel").toInt(); _focusOnVoice = nc.value("focusOnVoice").toBool();
+    // Outside ambient mode some devices (e.g. WH-1000XM4) report level 0; keep the last valid level so the
+    // Ambient card and slider don't send an out-of-range value back.
+    if (const int level = nc.value("ambientLevel").toInt(); level >= 1 && level <= 20) _ambientLevel = level;
+    _focusOnVoice = nc.value("focusOnVoice").toBool();
     const auto eq = s.value("equalizer").toObject();
     _equalizerPreset = valid("equalizer") ? eq.value("preset").toInt() : -1;
     _equalizerPresetName = valid("equalizer") ? eq.value("presetName").toString() : "Unknown";
