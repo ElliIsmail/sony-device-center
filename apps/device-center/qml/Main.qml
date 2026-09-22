@@ -2243,50 +2243,107 @@ ApplicationWindow {
                                 Text {
                                     textFormat: Text.PlainText
                                     Layout.fillWidth: true
-                                    text: "A Windows notification at " + battery.firstAlertLevel + "% and " + battery.secondAlertLevel
-                                          + "%, and when a charge completes while connected."
+                                    text: "Notifies at " + Math.round(alertRange.second.value) + "% and "
+                                          + Math.round(alertRange.first.value) + "%, and when fully charged."
                                     color: window.txtDim
                                     font.pixelSize: 12
                                     elide: Text.ElideRight
                                 }
                             }
 
-                            // Two thresholds, 5 % steps; the second list only offers levels below the first.
-                            Repeater {
-                                model: [
-                                    { label: "First alert",  first: true },
-                                    { label: "Second alert", first: false }
-                                ]
-                                delegate: ColumnLayout {
-                                    id: alertLevel
-                                    required property var modelData
-                                    readonly property var levels: {
-                                        const out = []
-                                        const top = modelData.first ? 95 : battery.firstAlertLevel - 5
-                                        const bottom = modelData.first ? 10 : 5
-                                        for (let v = top; v >= bottom; v -= 5) out.push(v)
-                                        return out
+                            // Both thresholds on one track: the left handle is the second
+                            // (lower) alert, the right handle the first. Any whole percent.
+                            RangeSlider {
+                                id: alertRange
+                                Layout.preferredWidth: 280
+                                Layout.alignment: Qt.AlignVCenter
+                                from: 5; to: 95; stepSize: 1
+                                snapMode: RangeSlider.SnapAlways
+                                enabled: battery.alertsEnabled
+                                opacity: enabled ? 1 : 0.45
+                                topPadding: 18   // room for the value labels above the handles
+                                implicitHeight: 44
+
+                                first.value: battery.secondAlertLevel
+                                second.value: battery.firstAlertLevel
+
+                                // Save on release, keeping the two at least 1 % apart.
+                                function commit() {
+                                    let low = Math.round(first.value), high = Math.round(second.value)
+                                    if (low >= high) low = high - 1
+                                    battery.setAlertLevels(high, low)
+                                    first.value = Qt.binding(function() { return battery.secondAlertLevel })
+                                    second.value = Qt.binding(function() { return battery.firstAlertLevel })
+                                }
+                                first.onPressedChanged: if (!first.pressed) commit()
+                                second.onPressedChanged: if (!second.pressed) commit()
+
+                                background: Rectangle {
+                                    x: alertRange.leftPadding
+                                    y: alertRange.topPadding + alertRange.availableHeight / 2 - height / 2
+                                    width: alertRange.availableWidth
+                                    height: 6
+                                    radius: 3
+                                    color: window.surfaceSunk
+                                    border.width: 1
+                                    border.color: window.line
+
+                                    // Below the second alert: red. Between the two: amber.
+                                    Rectangle {
+                                        width: alertRange.first.visualPosition * parent.width
+                                        height: parent.height
+                                        radius: 3
+                                        color: window.danger
+                                        opacity: 0.8
                                     }
-                                    spacing: 4
-                                    enabled: battery.alertsEnabled
-                                    opacity: enabled ? 1 : 0.45
-                                    Text { textFormat: Text.PlainText; text: alertLevel.modelData.label; color: window.txtFaint; font.pixelSize: 10 }
-                                    NeoCombo {
-                                        id: levelCombo
-                                        implicitWidth: 92
-                                        model: alertLevel.levels.map(v => v + "%")
-                                        confirmedIndex: alertLevel.levels.indexOf(alertLevel.modelData.first ? battery.firstAlertLevel : battery.secondAlertLevel)
-                                        onActivated: {
-                                            const v = alertLevel.levels[index]
-                                            if (alertLevel.modelData.first)
-                                                battery.setAlertLevels(v, Math.min(battery.secondAlertLevel, v - 5))
-                                            else
-                                                battery.setAlertLevels(battery.firstAlertLevel, v)
-                                        }
-                                        Connections {
-                                            target: battery
-                                            function onAlertLevelsChanged() { levelCombo.currentIndex = Qt.binding(function() { return levelCombo.confirmedIndex }) }
-                                        }
+                                    Rectangle {
+                                        x: alertRange.first.visualPosition * parent.width
+                                        width: (alertRange.second.visualPosition - alertRange.first.visualPosition) * parent.width
+                                        height: parent.height
+                                        color: window.ambientWarm
+                                        opacity: 0.8
+                                    }
+                                }
+
+                                first.handle: Rectangle {
+                                    x: alertRange.leftPadding + alertRange.first.visualPosition * (alertRange.availableWidth - width)
+                                    y: alertRange.topPadding + alertRange.availableHeight / 2 - height / 2
+                                    width: 18; height: 18; radius: 9
+                                    color: "white"
+                                    border.width: 2
+                                    border.color: window.danger
+                                    scale: alertRange.first.pressed ? 1.25 : (alertRange.first.hovered ? 1.12 : 1.0)
+                                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: parent.top
+                                        anchors.bottomMargin: 4
+                                        textFormat: Text.PlainText
+                                        text: Math.round(alertRange.first.value) + "%"
+                                        color: window.txt
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                    }
+                                }
+
+                                second.handle: Rectangle {
+                                    x: alertRange.leftPadding + alertRange.second.visualPosition * (alertRange.availableWidth - width)
+                                    y: alertRange.topPadding + alertRange.availableHeight / 2 - height / 2
+                                    width: 18; height: 18; radius: 9
+                                    color: "white"
+                                    border.width: 2
+                                    border.color: window.ambientWarm
+                                    scale: alertRange.second.pressed ? 1.25 : (alertRange.second.hovered ? 1.12 : 1.0)
+                                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        anchors.bottom: parent.top
+                                        anchors.bottomMargin: 4
+                                        textFormat: Text.PlainText
+                                        text: Math.round(alertRange.second.value) + "%"
+                                        color: window.txt
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
                                     }
                                 }
                             }

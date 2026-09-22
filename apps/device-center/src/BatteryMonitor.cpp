@@ -60,8 +60,8 @@ void BatteryMonitor::setAlertsEnabled(bool enabled) {
 }
 
 void BatteryMonitor::setAlertLevels(int first, int second) {
-    first = std::clamp(first, 10, 95);
-    second = std::clamp(second, 5, first - 5);
+    first = std::clamp(first, 6, 95);
+    second = std::clamp(second, 5, first - 1);
     if (first == _firstAlert && second == _secondAlert) return;
     _firstAlert = first;
     _secondAlert = second;

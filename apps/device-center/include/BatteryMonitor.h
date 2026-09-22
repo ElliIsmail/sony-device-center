@@ -48,7 +48,7 @@ public:
     Q_INVOKABLE void setAlertsEnabled(bool enabled);
     [[nodiscard]] int firstAlertLevel() const { return _firstAlert; }
     [[nodiscard]] int secondAlertLevel() const { return _secondAlert; }
-    /** Sets both levels; they are clamped to 5-95 and kept at least 5 apart. */
+    /** Sets both levels (whole percent, 5-95); the second stays below the first. */
     Q_INVOKABLE void setAlertLevels(int first, int second);
 
     // Exposed for tests: estimate from samples, given the current level.
