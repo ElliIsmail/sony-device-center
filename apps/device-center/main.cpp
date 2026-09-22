@@ -1,13 +1,19 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QIcon>
+#include <QSystemTrayIcon>
+#include <QWindow>
+#include <memory>
 
 #include "DeviceCenterController.h"
+#include "SystemTray.h"
 
 int main(int argc, char *argv[]) {
-    QGuiApplication app(argc, argv);
+    // QApplication rather than QGuiApplication: the tray icon's context menu
+    // is a QMenu.
+    QApplication app(argc, argv);
 
     // Main.qml customises background/handle/indicator on its controls. The
     // native "Windows" and "macOS" styles Qt picks by default there refuse
@@ -40,6 +46,12 @@ int main(int argc, char *argv[]) {
     }, Qt::QueuedConnection);
 
     engine.load(url);
+
+    std::unique_ptr<sony::devicecenter::SystemTray> tray;
+    if (QSystemTrayIcon::isSystemTrayAvailable() && !engine.rootObjects().isEmpty()) {
+        if (auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst()))
+            tray = std::make_unique<sony::devicecenter::SystemTray>(&controller, window);
+    }
 
     return app.exec();
 }

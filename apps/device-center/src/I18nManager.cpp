@@ -57,6 +57,10 @@ void I18nManager::_initTranslations() {
     en["system_preferences"]  = "System & Interface";
     en["init_with_os"]        = "Launch at System Startup";
     en["init_with_os_desc"]   = "Automatically launch Sony Device Center when you log in to your desktop.";
+    en["minimize_to_tray"]   = "Minimize to System Tray";
+    en["minimize_to_tray_desc"]= "Keep running in the system tray when the window is minimized or closed.";
+    en["tray_show"]          = "Show Window";
+    en["tray_quit"]          = "Quit";
     en["language"]            = "Display Language";
     en["language_desc"]       = "Select your preferred language for the user interface.";
     en["about_app"]           = "About Application";
@@ -97,6 +101,10 @@ void I18nManager::_initTranslations() {
     pt["system_preferences"]  = "Sistema & Interface";
     pt["init_with_os"]        = "Iniciar com o Sistema Operacional";
     pt["init_with_os_desc"]   = "Inicia o Sony Device Center automaticamente ao fazer login no seu computador.";
+    pt["minimize_to_tray"]   = "Minimizar para a Bandeja";
+    pt["minimize_to_tray_desc"]= "Continua em execução na bandeja do sistema ao minimizar ou fechar a janela.";
+    pt["tray_show"]          = "Mostrar Janela";
+    pt["tray_quit"]          = "Sair";
     pt["language"]            = "Idioma de Exibição";
     pt["language_desc"]       = "Selecione seu idioma preferido para a interface.";
     pt["about_app"]           = "Sobre o Aplicativo";
@@ -137,6 +145,10 @@ void I18nManager::_initTranslations() {
     es["system_preferences"]  = "Sistema e Interfaz";
     es["init_with_os"]        = "Iniciar con el Sistema Operativo";
     es["init_with_os_desc"]   = "Inicia automáticamente Sony Device Center al iniciar sesión en su ordenador.";
+    es["minimize_to_tray"]   = "Minimizar a la Bandeja";
+    es["minimize_to_tray_desc"]= "Sigue ejecutándose en la bandeja del sistema al minimizar o cerrar la ventana.";
+    es["tray_show"]          = "Mostrar Ventana";
+    es["tray_quit"]          = "Salir";
     es["language"]            = "Idioma";
     es["language_desc"]       = "Seleccione su idioma preferido para la interfaz.";
     es["about_app"]           = "Acerca de la Aplicación";
@@ -177,6 +189,10 @@ void I18nManager::_initTranslations() {
     de["system_preferences"]  = "System & Oberfläche";
     de["init_with_os"]        = "Beim Systemstart ausführen";
     de["init_with_os_desc"]   = "Startet das Sony Device Center automatisch bei der Anmeldung am Desktop.";
+    de["minimize_to_tray"]   = "In den Infobereich minimieren";
+    de["minimize_to_tray_desc"]= "Läuft im Infobereich weiter, wenn das Fenster minimiert oder geschlossen wird.";
+    de["tray_show"]          = "Fenster anzeigen";
+    de["tray_quit"]          = "Beenden";
     de["language"]            = "Sprache";
     de["language_desc"]       = "Wählen Sie Ihre bevorzugte Sprache für die Benutzeroberfläche.";
     de["about_app"]           = "Über die Anwendung";
@@ -217,6 +233,10 @@ void I18nManager::_initTranslations() {
     fr["system_preferences"]  = "Système & Interface";
     fr["init_with_os"]        = "Lancer au Démarrage du Système";
     fr["init_with_os_desc"]   = "Lance automatiquement Sony Device Center lors de la connexion à votre session.";
+    fr["minimize_to_tray"]   = "Réduire dans la Zone de Notification";
+    fr["minimize_to_tray_desc"]= "Continue de fonctionner dans la zone de notification lorsque la fenêtre est réduite ou fermée.";
+    fr["tray_show"]          = "Afficher la Fenêtre";
+    fr["tray_quit"]          = "Quitter";
     fr["language"]            = "Langue d'Affichage";
     fr["language_desc"]       = "Sélectionnez votre langue préférée pour l'interface utilisateur.";
     fr["about_app"]           = "À propos de l'application";
@@ -257,6 +277,10 @@ void I18nManager::_initTranslations() {
     ja["system_preferences"]  = "システムとインターフェース";
     ja["init_with_os"]        = "OS起動時に自動開始";
     ja["init_with_os_desc"]   = "ログイン時にSony Device Centerを自動的に起動します。";
+    ja["minimize_to_tray"]   = "システムトレイに最小化";
+    ja["minimize_to_tray_desc"]= "ウィンドウを最小化または閉じたときにシステムトレイで動作し続けます。";
+    ja["tray_show"]          = "ウィンドウを表示";
+    ja["tray_quit"]          = "終了";
     ja["language"]            = "表示言語";
     ja["language_desc"]       = "UIの表示言語を選択します。";
     ja["about_app"]           = "アプリについて";

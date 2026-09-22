@@ -16,6 +16,7 @@
 #include <QFileInfo>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QSystemTrayIcon>
 #include <QTextStream>
 #include <QUrl>
 #include <QVariantMap>
@@ -28,6 +29,7 @@ DeviceCenterController::DeviceCenterController(QObject* parent, std::shared_ptr<
     : QObject(parent) {
     QSettings settings("SonyBridge", "SonyDeviceCenter");
     _currentLanguage = settings.value("language", "en").toString();
+    _minimizeToTray = settings.value("minimizeToTray", true).toBool();
     _backend = new DeviceBackend(std::move(service));
     _backend->moveToThread(&_worker);
     connect(&_worker, &QThread::started, _backend, &DeviceBackend::start);
@@ -213,6 +215,18 @@ void DeviceCenterController::setAutostart(bool enable) {
     }
 #endif
     emit autostartChanged();
+}
+
+bool DeviceCenterController::trayAvailable() const {
+    return QSystemTrayIcon::isSystemTrayAvailable();
+}
+
+void DeviceCenterController::setMinimizeToTray(bool enable) {
+    if (_minimizeToTray == enable) return;
+    _minimizeToTray = enable;
+    QSettings settings("SonyBridge", "SonyDeviceCenter");
+    settings.setValue("minimizeToTray", enable);
+    emit minimizeToTrayChanged();
 }
 
 QString DeviceCenterController::appVersion() const {

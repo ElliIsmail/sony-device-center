@@ -13,15 +13,15 @@ set(CMAKE_AUTORCC ON)
 option(SONY_REQUIRE_QT
     "Fail configuration when Qt 6 is missing instead of skipping the desktop app" OFF)
 
-find_package(Qt6 COMPONENTS Core Gui Qml Quick QuickControls2 QUIET)
+find_package(Qt6 COMPONENTS Core Gui Widgets Qml Quick QuickControls2 QUIET)
 
 if(NOT Qt6_FOUND)
     if(SONY_REQUIRE_QT)
         message(FATAL_ERROR
-            "Qt 6 (Core, Gui, Qml, Quick, QuickControls2) not found, and "
+            "Qt 6 (Core, Gui, Widgets, Qml, Quick, QuickControls2) not found, and "
             "SONY_REQUIRE_QT is ON. Release packages must contain the desktop app.")
     endif()
-    message(WARNING "Qt 6 (Core, Gui, Qml, Quick, QuickControls2) not found — skipping sony-device-center target.")
+    message(WARNING "Qt 6 (Core, Gui, Widgets, Qml, Quick, QuickControls2) not found — skipping sony-device-center target.")
     return()
 endif()
 
@@ -34,6 +34,8 @@ add_executable(sony-device-center
     include/DeviceCenterController.h
     src/I18nManager.cpp
     include/I18nManager.h
+    src/SystemTray.cpp
+    include/SystemTray.h
     qml.qrc
 )
 
@@ -52,6 +54,7 @@ target_link_libraries(sony-device-center
     PRIVATE
         Qt6::Core
         Qt6::Gui
+        Qt6::Widgets
         Qt6::Qml
         Qt6::Quick
         Qt6::QuickControls2

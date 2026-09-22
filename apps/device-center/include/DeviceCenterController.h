@@ -52,6 +52,8 @@ class DeviceCenterController : public QObject {
     Q_PROPERTY(QVariantList pairedDevices READ pairedDevices NOTIFY pairedDevicesChanged)
 
     Q_PROPERTY(bool autostart READ autostart WRITE setAutostart NOTIFY autostartChanged)
+    Q_PROPERTY(bool minimizeToTray READ minimizeToTray WRITE setMinimizeToTray NOTIFY minimizeToTrayChanged)
+    Q_PROPERTY(bool trayAvailable READ trayAvailable CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
     Q_PROPERTY(QString currentLanguage READ currentLanguage WRITE setLanguage NOTIFY languageChanged)
     Q_PROPERTY(QVariantList availableLanguages READ availableLanguages CONSTANT)
@@ -95,6 +97,9 @@ public:
     [[nodiscard]] QVariantList pairedDevices() const;
 
     [[nodiscard]] bool autostart() const;
+    // Off when the platform has no system tray, so the window can't vanish with no way back.
+    [[nodiscard]] bool minimizeToTray() const { return _minimizeToTray && trayAvailable(); }
+    [[nodiscard]] bool trayAvailable() const;
     [[nodiscard]] QString appVersion() const;
     [[nodiscard]] QString currentLanguage() const;
     [[nodiscard]] QVariantList availableLanguages() const;
@@ -110,6 +115,7 @@ public:
     Q_INVOKABLE void setAutoPowerOff(int index);
 
     Q_INVOKABLE void setAutostart(bool enable);
+    Q_INVOKABLE void setMinimizeToTray(bool enable);
     Q_INVOKABLE void setLanguage(const QString& langCode);
     Q_INVOKABLE QString t(const QString& key) const;
     Q_INVOKABLE void openUrl(const QString& url);
@@ -123,6 +129,7 @@ signals:
     void capabilitiesChanged();
     void pairedDevicesChanged();
     void autostartChanged();
+    void minimizeToTrayChanged();
     void languageChanged();
 
 private:
@@ -155,6 +162,7 @@ private:
     int _autoPowerOff{0};
     QVariantList _pairedDevices;
     QString _currentLanguage{"en"};
+    bool _minimizeToTray{true};
 
 };
 

@@ -13,6 +13,19 @@ ApplicationWindow {
     title: "Sony Device Center — " + controller.deviceName
     color: bg
 
+    // With minimize-to-tray on, minimizing or closing only hides the window;
+    // the tray icon brings it back and its menu is the way to quit.
+    onVisibilityChanged: function(visibility) {
+        if (visibility === Window.Minimized && controller.minimizeToTray)
+            window.hide()
+    }
+    onClosing: function(close) {
+        if (controller.minimizeToTray) {
+            close.accepted = false
+            window.hide()
+        }
+    }
+
     footer: Rectangle {
         color: window.surface
         height: statusText.implicitHeight + 24
@@ -1901,7 +1914,7 @@ ApplicationWindow {
                     // Card 1: System & Interface Preferences
                     Card {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 180
+                        Layout.preferredHeight: controller.trayAvailable ? 250 : 180
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -1950,6 +1963,59 @@ ApplicationWindow {
                                 NeoSwitch {
                                     confirmedChecked: controller.autostart
                                     onToggled: controller.setAutostart(checked)
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: window.line
+                                visible: controller.trayAvailable
+                            }
+
+                            // Row: Minimize to system tray
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 16
+                                visible: controller.trayAvailable
+
+                                Rectangle {
+                                    Layout.preferredWidth: 38
+                                    Layout.preferredHeight: 38
+                                    radius: 11
+                                    color: Qt.rgba(window.accent.r, window.accent.g, window.accent.b, 0.14)
+                                    border.width: 1
+                                    border.color: Qt.rgba(window.accent.r, window.accent.g, window.accent.b, 0.35)
+
+                                    Glyph {
+                                        anchors.centerIn: parent
+                                        path: window.icons.headphones
+                                        size: 18
+                                        color: window.accentSoft
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 3
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        text: window.tr("minimize_to_tray")
+                                        color: window.txt
+                                        font.pixelSize: 14
+                                        font.weight: Font.DemiBold
+                                    }
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        text: window.tr("minimize_to_tray_desc")
+                                        color: window.txtDim
+                                        font.pixelSize: 12
+                                    }
+                                }
+
+                                NeoSwitch {
+                                    confirmedChecked: controller.minimizeToTray
+                                    onToggled: controller.setMinimizeToTray(checked)
                                 }
                             }
 
