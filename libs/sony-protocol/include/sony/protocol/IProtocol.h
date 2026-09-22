@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SemanticTypes.h"
+#include "SonyError.h"
 #include <array>
 #include <string>
 
@@ -42,6 +43,13 @@ public:
 
     virtual bool getAdaptiveVolume() = 0;
     virtual void setAdaptiveVolume(bool enabled) = 0;
+
+    // Optional settings only some generations implement. The defaults report
+    // Unsupported so callers can treat them like any other missing feature.
+    virtual SpeakToChatConfig getSpeakToChatConfig() { throw SonyException(SonyErrorCode::Unsupported, "Speak-to-Chat tuning is not supported"); }
+    virtual void setSpeakToChatConfig(const SpeakToChatConfig& /*config*/) { throw SonyException(SonyErrorCode::Unsupported, "Speak-to-Chat tuning is not supported"); }
+    virtual bool getPauseWhenTakenOff() { throw SonyException(SonyErrorCode::Unsupported, "Pause when taken off is not supported"); }
+    virtual void setPauseWhenTakenOff(bool /*enabled*/) { throw SonyException(SonyErrorCode::Unsupported, "Pause when taken off is not supported"); }
 };
 
 } // namespace sony::protocol

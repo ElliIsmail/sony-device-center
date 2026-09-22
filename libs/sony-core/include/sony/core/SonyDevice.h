@@ -58,6 +58,8 @@ public:
     void setDsee(bool enabled);
     void setAutoPowerOff(int index);
     void setSpeakToChat(bool enabled);
+    void setSpeakToChatConfig(const protocol::SpeakToChatConfig& config);
+    void setPauseWhenTakenOff(bool enabled);
     void setAdaptiveVolume(bool enabled);
 
 private:

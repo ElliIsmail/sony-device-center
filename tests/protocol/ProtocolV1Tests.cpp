@@ -277,6 +277,82 @@ TEST_CASE("ProtocolV1: writes Speak-to-Chat with a non-inverted flag", "[protoco
     REQUIRE(FrameCodec::decode(fake.sentFrames()[1]).payload == std::vector<uint8_t>{0xf8, 0x05, 0x01, 0x00});
 }
 
+// Replies below are what a WH-1000XM4 (firmware 3.0.1) actually returned.
+TEST_CASE("ProtocolV1: reads and writes Speak-to-Chat tuning", "[protocol][v1]")
+{
+    SECTION("read: fb 05 00 <sensitivity> <voiceFocus> <timeout>")
+    {
+        FakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV1 v1(session);
+        queueReply(fake, {0xfb, 0x05, 0x00, 0x00, 0x00, 0x01});
+        const auto config = v1.getSpeakToChatConfig();
+        REQUIRE(firstRequestPayload(fake) == std::vector<uint8_t>{0xfa, 0x05});
+        REQUIRE(config.sensitivity == 0);
+        REQUIRE_FALSE(config.voiceFocus);
+        REQUIRE(config.timeout == 1);
+    }
+
+    SECTION("write keeps the voice-focus byte and clamps codes")
+    {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV1 v1(session);
+        fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
+        v1.setSpeakToChatConfig({ .sensitivity = 2, .voiceFocus = true, .timeout = 9 });
+        REQUIRE(FrameCodec::decode(fake.sentFrames()[0]).payload
+                == std::vector<uint8_t>{0xfc, 0x05, 0x00, 0x02, 0x01, 0x03});
+    }
+}
+
+TEST_CASE("ProtocolV1: reads and writes pause when taken off", "[protocol][v1]")
+{
+    {
+        FakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV1 v1(session);
+        queueReply(fake, {0xf7, 0x03, 0x00, 0x01});
+        REQUIRE(v1.getPauseWhenTakenOff());
+        REQUIRE(firstRequestPayload(fake) == std::vector<uint8_t>{0xf6, 0x03});
+    }
+    {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV1 v1(session);
+        fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
+        v1.setPauseWhenTakenOff(false);
+        REQUIRE(FrameCodec::decode(fake.sentFrames()[0]).payload == std::vector<uint8_t>{0xf8, 0x03, 0x00, 0x00});
+    }
+}
+
+TEST_CASE("ProtocolV1: maps auto power off codes to the shared index", "[protocol][v1]")
+{
+    {
+        FakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV1 v1(session);
+        // 10 00 is "when taken off", index 5 in the table V2 also uses.
+        queueReply(fake, {0xf7, 0x04, 0x01, 0x10, 0x00});
+        REQUIRE(v1.getAutoPowerOff() == 5);
+        REQUIRE(firstRequestPayload(fake) == std::vector<uint8_t>{0xf6, 0x04});
+    }
+    {
+        ReplyingFakeTransport fake;
+        SonyProtocolSession session(&fake);
+        session.connect("11:22:33:44:55:66");
+        ProtocolV1 v1(session);
+        fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
+        v1.setAutoPowerOff(0);
+        REQUIRE(FrameCodec::decode(fake.sentFrames()[0]).payload == std::vector<uint8_t>{0xf8, 0x04, 0x01, 0x11, 0x00});
+        REQUIRE_THROWS_AS(v1.setAutoPowerOff(6), SonyException);
+    }
+}
+
 TEST_CASE("ProtocolV1: unsupported features throw Unsupported", "[protocol][v1]")
 {
     FakeTransport fake;
@@ -288,6 +364,5 @@ TEST_CASE("ProtocolV1: unsupported features throw Unsupported", "[protocol][v1]"
     REQUIRE_THROWS_AS(v1.getDsee(), SonyException);
     REQUIRE_THROWS_AS(v1.setDsee(true), SonyException);
     REQUIRE_THROWS_AS(v1.getAdaptiveVolume(), SonyException);
-    REQUIRE_THROWS_AS(v1.getAutoPowerOff(), SonyException);
     REQUIRE(fake.sentCount() == 0);
 }

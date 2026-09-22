@@ -45,9 +45,11 @@ struct DeviceCapabilities
     bool dsee = false;
 
     bool speakToChat = false;
+    bool speakToChatConfig = false;  // sensitivity and timeout
     bool adaptiveVolume = false;
 
     bool autoPowerOff = false;
+    bool pauseWhenTakenOff = false;
 
     bool firmwareInfo = false;
     bool codecInfo = false;

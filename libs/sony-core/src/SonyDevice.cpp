@@ -56,7 +56,8 @@ void SonyDevice::connect(const transport::DeviceAddress& address, std::string_vi
         for (const auto& [name, supported] : std::initializer_list<std::pair<std::string, bool>>{
             {"battery",c.battery},{"noiseControl",c.noiseCancelling || c.ambientSound},
             {"equalizer",c.equalizer},{"dsee",c.dsee},{"codec",c.codecInfo},{"firmware",c.firmwareInfo},
-            {"speakToChat",c.speakToChat},{"adaptiveVolume",c.adaptiveVolume},{"autoPowerOff",c.autoPowerOff}})
+            {"speakToChat",c.speakToChat},{"speakToChatConfig",c.speakToChatConfig},{"adaptiveVolume",c.adaptiveVolume},
+            {"autoPowerOff",c.autoPowerOff},{"pauseWhenTakenOff",c.pauseWhenTakenOff}})
             _state.features[name].availability = supported ? "unknown" : "unsupported";
     }
     _transport->connect(address);
@@ -331,6 +332,28 @@ void SonyDevice::setSpeakToChat(bool enabled) {
     _dispatcher.dispatch(protocol::DeviceStateChanged{snapshot()});
 }
 
+void SonyDevice::setSpeakToChatConfig(const protocol::SpeakToChatConfig& config) {
+    if (!_protocol) return;
+    _protocol->setSpeakToChatConfig(config);
+    {
+        std::lock_guard lock(_stateMutex);
+        _state.speakToChatConfig = config;
+        _markSuccess("speakToChatConfig");
+    }
+    _dispatcher.dispatch(protocol::DeviceStateChanged{snapshot()});
+}
+
+void SonyDevice::setPauseWhenTakenOff(bool enabled) {
+    if (!_protocol) return;
+    _protocol->setPauseWhenTakenOff(enabled);
+    {
+        std::lock_guard lock(_stateMutex);
+        _state.pauseWhenTakenOff = enabled;
+        _markSuccess("pauseWhenTakenOff");
+    }
+    _dispatcher.dispatch(protocol::DeviceStateChanged{snapshot()});
+}
+
 void SonyDevice::setAdaptiveVolume(bool enabled) {
     if (!_protocol) return;
     _protocol->setAdaptiveVolume(enabled);
@@ -354,9 +377,9 @@ void SonyDevice::_markError(const std::string& feature, const SonyException& ex)
 }
 void SonyDevice::refreshSettingsStep() {
     if (!_protocol || !isConnected()) return;
-    // Nine steps, each scheduled separately. Optional features are never probed
+    // Ten steps, each scheduled separately. Optional features are never probed
     // on profiles that don't advertise them.
-    const auto step = _refreshStep++ % 9;
+    const auto step = _refreshStep++ % 10;
     if (step == 0) { refreshNoiseControl(); return; }
     if (step == 1) { refreshEqualizer(); return; }
     if (step == 2) { refreshDsee(); return; }
@@ -379,6 +402,12 @@ void SonyDevice::refreshSettingsStep() {
         } else if (step == 7 && _capabilities.autoPowerOff) {
             feature = "autoPowerOff"; auto value = _protocol->getAutoPowerOff();
             std::lock_guard lock(_stateMutex); _state.autoPowerOff = value; _markSuccess(feature);
+        } else if (step == 8 && _capabilities.speakToChatConfig) {
+            feature = "speakToChatConfig"; auto value = _protocol->getSpeakToChatConfig();
+            std::lock_guard lock(_stateMutex); _state.speakToChatConfig = value; _markSuccess(feature);
+        } else if (step == 9 && _capabilities.pauseWhenTakenOff) {
+            feature = "pauseWhenTakenOff"; auto value = _protocol->getPauseWhenTakenOff();
+            std::lock_guard lock(_stateMutex); _state.pauseWhenTakenOff = value; _markSuccess(feature);
         }
     } catch (const SonyException& ex) { if (!feature.empty()) _markError(feature, ex); }
     _dispatcher.dispatch(protocol::DeviceStateChanged{snapshot()});

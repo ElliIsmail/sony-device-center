@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iterator>
+#include <utility>
 
 // Byte layouts below match Client/CommandSerializer.cpp (the legacy client,
 // exercised on WH-1000XM3 hardware for years) and Gadgetbridge's
@@ -22,6 +24,17 @@ namespace {
 constexpr uint8_t kNcAsmInquired = 0x02;  // NOISE_CANCELLING_AND_AMBIENT_SOUND_MODE
 constexpr uint8_t kEqInquired = 0x01;     // PRESET_EQ
 constexpr uint8_t kSpeakToChatType = 0x05;
+// Types in the f6/f7/f8 "automatic power off & button mode" family, and the
+// fa/fb/fc Speak-to-Chat config family. Layouts from Gadgetbridge's
+// SonyProtocolImplV1; every GET below was replayed against a WH-1000XM4.
+constexpr uint8_t kPauseWhenTakenOffType = 0x03;
+constexpr uint8_t kAutoPowerOffType = 0x04;
+constexpr uint8_t kSpeakToChatConfigType = 0x05;
+
+// Same code pairs as V2's table, index-aligned with IProtocol::getAutoPowerOff.
+constexpr std::pair<uint8_t, uint8_t> kAutoPowerOffCodes[] = {
+    {0x11, 0x00}, {0x00, 0x00}, {0x01, 0x01}, {0x02, 0x02}, {0x03, 0x03}, {0x10, 0x00}
+};
 
 constexpr uint8_t kEffectOff = 0x00;
 constexpr uint8_t kEffectAdjustmentCompletion = 0x11;
@@ -234,11 +247,68 @@ std::string ProtocolV1::getCodec() {
 }
 
 int ProtocolV1::getAutoPowerOff() {
-    throw SonyException(SonyErrorCode::Unsupported, "Auto Power Off is not supported on Protocol V1");
+    // GET f6 04 -> RET f7 04 01 <code0> <code1>. The WH-1000XM4 only offers
+    // Off (11 00) and "when taken off" (10 00); older models may use the timers.
+    auto resp = _session.sendAndAwaitResponse(
+        SonyFrame{ .type = DataType::DataMdr, .payload = {0xf6, kAutoPowerOffType} },
+        0xf7, kAutoPowerOffType, kTimeout);
+    if (resp.payload.size() < 5)
+        throw SonyException(SonyErrorCode::InvalidResponse, "Incomplete auto power off response");
+    for (int i = 0; i < static_cast<int>(std::size(kAutoPowerOffCodes)); ++i) {
+        if (kAutoPowerOffCodes[i].first == resp.payload[3] && kAutoPowerOffCodes[i].second == resp.payload[4]) return i;
+    }
+    throw SonyException(SonyErrorCode::InvalidResponse, "Unknown auto power off code");
 }
 
-void ProtocolV1::setAutoPowerOff(int /*index*/) {
-    throw SonyException(SonyErrorCode::Unsupported, "Auto Power Off is not supported on Protocol V1");
+void ProtocolV1::setAutoPowerOff(int index) {
+    // SET f8 04 01 <code0> <code1>
+    if (index < 0 || index >= static_cast<int>(std::size(kAutoPowerOffCodes)))
+        throw SonyException(SonyErrorCode::InvalidResponse, "Auto power off index out of range");
+    std::vector<uint8_t> payload = {
+        0xf8, kAutoPowerOffType, 0x01, kAutoPowerOffCodes[index].first, kAutoPowerOffCodes[index].second
+    };
+    _session.send(SonyFrame{ .type = DataType::DataMdr, .payload = std::move(payload) });
+}
+
+SpeakToChatConfig ProtocolV1::getSpeakToChatConfig() {
+    // GET fa 05 -> RET fb 05 00 <sensitivity> <voiceFocus> <timeout>
+    auto resp = _session.sendAndAwaitResponse(
+        SonyFrame{ .type = DataType::DataMdr, .payload = {0xfa, kSpeakToChatConfigType} },
+        0xfb, kSpeakToChatConfigType, kTimeout);
+    if (resp.payload.size() < 6)
+        throw SonyException(SonyErrorCode::InvalidResponse, "Incomplete Speak-to-Chat config response");
+    return SpeakToChatConfig{
+        .sensitivity = static_cast<int>(resp.payload[3]),
+        .voiceFocus = resp.payload[4] == 0x01,
+        .timeout = static_cast<int>(resp.payload[5]),
+    };
+}
+
+void ProtocolV1::setSpeakToChatConfig(const SpeakToChatConfig& config) {
+    // SET fc 05 00 <sensitivity> <voiceFocus> <timeout>
+    std::vector<uint8_t> payload = {
+        0xfc, kSpeakToChatConfigType, 0x00,
+        static_cast<uint8_t>(std::clamp(config.sensitivity, 0, 2)),
+        static_cast<uint8_t>(config.voiceFocus ? 0x01 : 0x00),
+        static_cast<uint8_t>(std::clamp(config.timeout, 0, 3))
+    };
+    _session.send(SonyFrame{ .type = DataType::DataMdr, .payload = std::move(payload) });
+}
+
+bool ProtocolV1::getPauseWhenTakenOff() {
+    // GET f6 03 -> RET f7 03 00 <enabled>
+    auto resp = _session.sendAndAwaitResponse(
+        SonyFrame{ .type = DataType::DataMdr, .payload = {0xf6, kPauseWhenTakenOffType} },
+        0xf7, kPauseWhenTakenOffType, kTimeout);
+    if (resp.payload.size() < 4)
+        throw SonyException(SonyErrorCode::InvalidResponse, "Incomplete pause-when-taken-off response");
+    return resp.payload[3] == 0x01;
+}
+
+void ProtocolV1::setPauseWhenTakenOff(bool enabled) {
+    // SET f8 03 00 <enabled>
+    std::vector<uint8_t> payload = { 0xf8, kPauseWhenTakenOffType, 0x00, static_cast<uint8_t>(enabled ? 0x01 : 0x00) };
+    _session.send(SonyFrame{ .type = DataType::DataMdr, .payload = std::move(payload) });
 }
 
 bool ProtocolV1::getSpeakToChat() {

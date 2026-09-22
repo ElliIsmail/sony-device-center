@@ -27,6 +27,13 @@ struct NoiseControlState {
     bool focusOnVoice{false};
 };
 
+// Speak-to-Chat tuning. Codes are the device's own byte values.
+struct SpeakToChatConfig {
+    int sensitivity{0};   // 0 auto, 1 high, 2 low
+    bool voiceFocus{false};
+    int timeout{1};       // 0 short, 1 standard, 2 long, 3 never (stays in ambient until resumed)
+};
+
 struct EqualizerState {
     int preset{0};
     int clearBass{0};
