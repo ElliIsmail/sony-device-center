@@ -1100,6 +1100,15 @@ ApplicationWindow {
                                     active: controller.noiseControlMode === "off"
                                     onClicked: controller.setNoiseControlOff()
                                 }
+
+                                PillButton {
+                                    visible: controller.hasSpeakToChat
+                                    text: "Speak-to-Chat"
+                                    glyphPath: window.icons.mic
+                                    tint: window.success
+                                    active: controller.speakToChat
+                                    onClicked: controller.setSpeakToChat(!active)
+                                }
                             }
 
                             // Secondary: a link to another screen, not a fourth mode.

@@ -240,6 +240,43 @@ TEST_CASE("ProtocolV1: sends VPT and sound position commands", "[protocol][v1]")
     REQUIRE(posFrame.payload == std::vector<uint8_t>{0x48, 0x02, 0x01});
 }
 
+TEST_CASE("ProtocolV1: reads Speak-to-Chat behind type 0x05", "[protocol][v1]")
+{
+    FakeTransport fake;
+    SonyProtocolSession session(&fake);
+    session.connect("11:22:33:44:55:66");
+    ProtocolV1 v1(session);
+
+    SECTION("enabled")
+    {
+        queueReply(fake, {0xf7, 0x05, 0x01, 0x01});
+        REQUIRE(v1.getSpeakToChat());
+        REQUIRE(firstRequestPayload(fake) == std::vector<uint8_t>{0xf6, 0x05});
+    }
+
+    SECTION("disabled")
+    {
+        queueReply(fake, {0xf7, 0x05, 0x01, 0x00});
+        REQUIRE_FALSE(v1.getSpeakToChat());
+    }
+}
+
+TEST_CASE("ProtocolV1: writes Speak-to-Chat with a non-inverted flag", "[protocol][v1]")
+{
+    ReplyingFakeTransport fake;
+    SonyProtocolSession session(&fake);
+    session.connect("11:22:33:44:55:66");
+    ProtocolV1 v1(session);
+
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 0 } });
+    v1.setSpeakToChat(true);
+    REQUIRE(FrameCodec::decode(fake.sentFrames()[0]).payload == std::vector<uint8_t>{0xf8, 0x05, 0x01, 0x01});
+
+    fake.queueReply({ SonyFrame{ .type = DataType::Ack, .sequence = 1 } });
+    v1.setSpeakToChat(false);
+    REQUIRE(FrameCodec::decode(fake.sentFrames()[1]).payload == std::vector<uint8_t>{0xf8, 0x05, 0x01, 0x00});
+}
+
 TEST_CASE("ProtocolV1: unsupported features throw Unsupported", "[protocol][v1]")
 {
     FakeTransport fake;
@@ -250,7 +287,6 @@ TEST_CASE("ProtocolV1: unsupported features throw Unsupported", "[protocol][v1]"
 
     REQUIRE_THROWS_AS(v1.getDsee(), SonyException);
     REQUIRE_THROWS_AS(v1.setDsee(true), SonyException);
-    REQUIRE_THROWS_AS(v1.getSpeakToChat(), SonyException);
     REQUIRE_THROWS_AS(v1.getAdaptiveVolume(), SonyException);
     REQUIRE_THROWS_AS(v1.getAutoPowerOff(), SonyException);
     REQUIRE(fake.sentCount() == 0);

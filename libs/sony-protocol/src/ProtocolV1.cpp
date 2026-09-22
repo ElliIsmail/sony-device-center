@@ -21,6 +21,7 @@ namespace {
 
 constexpr uint8_t kNcAsmInquired = 0x02;  // NOISE_CANCELLING_AND_AMBIENT_SOUND_MODE
 constexpr uint8_t kEqInquired = 0x01;     // PRESET_EQ
+constexpr uint8_t kSpeakToChatType = 0x05;
 
 constexpr uint8_t kEffectOff = 0x00;
 constexpr uint8_t kEffectAdjustmentCompletion = 0x11;
@@ -241,11 +242,28 @@ void ProtocolV1::setAutoPowerOff(int /*index*/) {
 }
 
 bool ProtocolV1::getSpeakToChat() {
-    throw SonyException(SonyErrorCode::Unsupported, "Speak-to-Chat is not supported on Protocol V1");
+    // GET f6 05 -> RET f7 05 01 <enabled>
+    // Same automatic power-off/button-mode family as V2's f6 0c, behind type
+    // 0x05 and with the flag not inverted (Gadgetbridge SonyProtocolImplV1).
+    // Only models whose profile enables speakToChat (the WH-1000XM4) get here.
+    auto resp = _session.sendAndAwaitResponse(
+        SonyFrame{ .type = DataType::DataMdr, .payload = {0xf6, kSpeakToChatType} },
+        0xf7, kSpeakToChatType, kTimeout);
+    if (resp.payload.size() >= 4) {
+        return resp.payload[3] == 0x01;
+    }
+    throw SonyException(SonyErrorCode::InvalidResponse, "Incomplete Speak-to-Chat response");
 }
 
-void ProtocolV1::setSpeakToChat(bool /*enabled*/) {
-    throw SonyException(SonyErrorCode::Unsupported, "Speak-to-Chat is not supported on Protocol V1");
+void ProtocolV1::setSpeakToChat(bool enabled) {
+    // SET f8 05 01 <enabled>
+    std::vector<uint8_t> payload = {
+        0xf8,
+        kSpeakToChatType,
+        0x01,
+        static_cast<uint8_t>(enabled ? 0x01 : 0x00)
+    };
+    _session.send(SonyFrame{ .type = DataType::DataMdr, .payload = std::move(payload) });
 }
 
 bool ProtocolV1::getAdaptiveVolume() {
