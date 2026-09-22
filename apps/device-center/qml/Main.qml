@@ -2243,12 +2243,54 @@ ApplicationWindow {
                                 Text {
                                     textFormat: Text.PlainText
                                     Layout.fillWidth: true
-                                    text: "A Windows notification at 20% and 10%, and when a charge completes while connected."
+                                    text: "A Windows notification at " + battery.firstAlertLevel + "% and " + battery.secondAlertLevel
+                                          + "%, and when a charge completes while connected."
                                     color: window.txtDim
                                     font.pixelSize: 12
                                     elide: Text.ElideRight
                                 }
                             }
+
+                            // Two thresholds, 5 % steps; the second list only offers levels below the first.
+                            Repeater {
+                                model: [
+                                    { label: "First alert",  first: true },
+                                    { label: "Second alert", first: false }
+                                ]
+                                delegate: ColumnLayout {
+                                    id: alertLevel
+                                    required property var modelData
+                                    readonly property var levels: {
+                                        const out = []
+                                        const top = modelData.first ? 95 : battery.firstAlertLevel - 5
+                                        const bottom = modelData.first ? 10 : 5
+                                        for (let v = top; v >= bottom; v -= 5) out.push(v)
+                                        return out
+                                    }
+                                    spacing: 4
+                                    enabled: battery.alertsEnabled
+                                    opacity: enabled ? 1 : 0.45
+                                    Text { textFormat: Text.PlainText; text: alertLevel.modelData.label; color: window.txtFaint; font.pixelSize: 10 }
+                                    NeoCombo {
+                                        id: levelCombo
+                                        implicitWidth: 92
+                                        model: alertLevel.levels.map(v => v + "%")
+                                        confirmedIndex: alertLevel.levels.indexOf(alertLevel.modelData.first ? battery.firstAlertLevel : battery.secondAlertLevel)
+                                        onActivated: {
+                                            const v = alertLevel.levels[index]
+                                            if (alertLevel.modelData.first)
+                                                battery.setAlertLevels(v, Math.min(battery.secondAlertLevel, v - 5))
+                                            else
+                                                battery.setAlertLevels(battery.firstAlertLevel, v)
+                                        }
+                                        Connections {
+                                            target: battery
+                                            function onAlertLevelsChanged() { levelCombo.currentIndex = Qt.binding(function() { return levelCombo.confirmedIndex }) }
+                                        }
+                                    }
+                                }
+                            }
+
                             NeoSwitch {
                                 confirmedChecked: battery.alertsEnabled
                                 onToggled: battery.setAlertsEnabled(checked)

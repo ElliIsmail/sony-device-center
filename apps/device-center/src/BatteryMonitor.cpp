@@ -32,6 +32,9 @@ BatteryMonitor::BatteryMonitor(DeviceCenterController* controller, QObject* pare
     : QObject(parent), _controller(controller) {
     QSettings settings("SonyBridge", "SonyDeviceCenter");
     _alertsEnabled = settings.value("batteryAlerts", true).toBool();
+    _firstAlert = settings.value("batteryAlertFirst", 20).toInt();
+    _secondAlert = settings.value("batteryAlertSecond", 10).toInt();
+    if (_secondAlert >= _firstAlert) { _firstAlert = 20; _secondAlert = 10; }
 
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(dir);
@@ -54,6 +57,21 @@ void BatteryMonitor::setAlertsEnabled(bool enabled) {
     QSettings settings("SonyBridge", "SonyDeviceCenter");
     settings.setValue("batteryAlerts", enabled);
     emit alertsEnabledChanged();
+}
+
+void BatteryMonitor::setAlertLevels(int first, int second) {
+    first = std::clamp(first, 10, 95);
+    second = std::clamp(second, 5, first - 5);
+    if (first == _firstAlert && second == _secondAlert) return;
+    _firstAlert = first;
+    _secondAlert = second;
+    // Re-arm, so a new threshold above the current level waits for the next drop.
+    _alertedFirst = _lastLevel >= 0 && _lastLevel <= first;
+    _alertedSecond = _lastLevel >= 0 && _lastLevel <= second;
+    QSettings settings("SonyBridge", "SonyDeviceCenter");
+    settings.setValue("batteryAlertFirst", first);
+    settings.setValue("batteryAlertSecond", second);
+    emit alertLevelsChanged();
 }
 
 void BatteryMonitor::_onState() {
@@ -91,17 +109,17 @@ void BatteryMonitor::_record(int level, bool charging, bool force) {
 
 void BatteryMonitor::_checkAlerts(int level, bool charging) {
     // Re-arm on charging or once the level is comfortably back above a threshold.
-    if (charging || level > 25) _alerted20 = false;
-    if (charging || level > 15) _alerted10 = false;
+    if (charging || level > _firstAlert + 5) _alertedFirst = false;
+    if (charging || level > _secondAlert + 5) _alertedSecond = false;
     if (!charging) _alertedFull = false;
 
     if (!_alertsEnabled) return;
     const QString device = _controller->deviceName();
-    if (!charging && level <= 10 && !_alerted10) {
-        _alerted10 = _alerted20 = true;
+    if (!charging && level <= _secondAlert && !_alertedSecond) {
+        _alertedSecond = _alertedFirst = true;
         emit notify(device + " battery low", QString("%1% left. Charge soon.").arg(level));
-    } else if (!charging && level <= 20 && !_alerted20) {
-        _alerted20 = true;
+    } else if (!charging && level <= _firstAlert && !_alertedFirst) {
+        _alertedFirst = true;
         emit notify(device + " battery low", QString("%1% left.").arg(level));
     } else if (charging && level >= 100 && !_alertedFull) {
         _alertedFull = true;

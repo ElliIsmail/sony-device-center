@@ -24,6 +24,9 @@ class BatteryMonitor : public QObject {
     /** Sony's rated hours for the connected model in its current mode (full charge). */
     Q_PROPERTY(double ratedHours READ ratedHours NOTIFY estimateChanged)
     Q_PROPERTY(bool alertsEnabled READ alertsEnabled WRITE setAlertsEnabled NOTIFY alertsEnabledChanged)
+    /** Two alert thresholds in percent; the second is always below the first. */
+    Q_PROPERTY(int firstAlertLevel READ firstAlertLevel NOTIFY alertLevelsChanged)
+    Q_PROPERTY(int secondAlertLevel READ secondAlertLevel NOTIFY alertLevelsChanged)
 
 public:
     explicit BatteryMonitor(DeviceCenterController* controller, QObject* parent = nullptr);
@@ -43,6 +46,10 @@ public:
     [[nodiscard]] bool alertsEnabled() const { return _alertsEnabled; }
     [[nodiscard]] double ratedHours() const;
     Q_INVOKABLE void setAlertsEnabled(bool enabled);
+    [[nodiscard]] int firstAlertLevel() const { return _firstAlert; }
+    [[nodiscard]] int secondAlertLevel() const { return _secondAlert; }
+    /** Sets both levels; they are clamped to 5-95 and kept at least 5 apart. */
+    Q_INVOKABLE void setAlertLevels(int first, int second);
 
     // Exposed for tests: estimate from samples, given the current level.
     static double estimateFromUsage(const QVector<Sample>& samples, int level);
@@ -51,6 +58,7 @@ signals:
     void historyChanged();
     void estimateChanged();
     void alertsEnabledChanged();
+    void alertLevelsChanged();
     /** A notification the tray should show. */
     void notify(const QString& title, const QString& message);
 
@@ -72,9 +80,11 @@ private:
     bool _wasConnected{false};
     int _lastLevel{-1};
     bool _lastCharging{false};
+    int _firstAlert{20};
+    int _secondAlert{10};
     // Alert latches, re-armed after charging or a rise above the threshold.
-    bool _alerted20{false};
-    bool _alerted10{false};
+    bool _alertedFirst{false};
+    bool _alertedSecond{false};
     bool _alertedFull{false};
 };
 
