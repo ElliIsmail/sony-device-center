@@ -1,4 +1,5 @@
 #include "SystemTray.h"
+#include "BatteryMonitor.h"
 #include "DeviceCenterController.h"
 
 #include <QAction>
@@ -106,6 +107,16 @@ void SystemTray::showWindow() {
     _window->requestActivate();
 }
 
+void SystemTray::showMessage(const QString& title, const QString& message) {
+    _icon->showMessage(title, message, QSystemTrayIcon::Information, 8000);
+}
+
+void SystemTray::setBatteryMonitor(BatteryMonitor* battery) {
+    _battery = battery;
+    connect(_battery, &BatteryMonitor::estimateChanged, this, &SystemTray::_refresh);
+    _refresh();
+}
+
 void SystemTray::_retranslate() {
     _show->setText(_controller->t("tray_show"));
     _anc->setText(_controller->t("noise_cancelling"));
@@ -144,6 +155,8 @@ void SystemTray::_refresh() {
         if (level >= 0) {
             tip += QString(" · %1%").arg(level);
             if (charging) tip += " · " + _controller->t("charging");
+            else if (_battery && _battery->hoursLeft() >= 0)
+                tip += QString(" · ~%1 h left").arg(qRound(_battery->hoursLeft()));
         }
     } else {
         tip += " — " + _controller->t("disconnected");

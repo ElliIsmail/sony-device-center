@@ -132,6 +132,8 @@ ApplicationWindow {
         bolt:       "M13.2 2.5L4.8 13.4h6.3l-1.3 8.1 8.4-10.9h-6.3z",
         bluetooth:  "M7.5 7.5L16.5 13.4 12 17V3.6l4.5 3.6-9 6",
         chevron:    "M5 9l7 7 7-7",
+        battery:    "M4 8h13a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z M22 11v2",
+        keyboard:   "M3.5 6.5h17a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 16V8a1.5 1.5 0 0 1 1.5-1.5z M6 10h.01 M10 10h.01 M14 10h.01 M18 10h.01 M7.5 14h9",
         settings:   "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
         globe:      "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M2 12h20 M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z",
         github:     "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22",
@@ -439,6 +441,49 @@ ApplicationWindow {
         }
     }
 
+    // Dropdown styled like the rest of the app. `confirmedIndex` follows the
+    // device; a pick only sticks once the device reports it back.
+    component NeoCombo: ComboBox {
+        id: combo
+        property int confirmedIndex: -1
+        currentIndex: confirmedIndex
+        Connections {
+            target: controller
+            function onStateChanged() { combo.currentIndex = Qt.binding(function() { return combo.confirmedIndex }) }
+        }
+        implicitWidth: 134
+        implicitHeight: 38
+
+        background: Rectangle {
+            radius: 11
+            color: combo.hovered ? window.surfaceHi : window.surfaceSunk
+            border.width: 1
+            border.color: combo.hovered ? window.lineHi : window.line
+            Behavior on color { ColorAnimation { duration: window.tFast } }
+        }
+
+        contentItem: Text {
+            textFormat: Text.PlainText
+            leftPadding: 13
+            rightPadding: 28
+            text: combo.displayText
+            color: combo.enabled ? window.txt : window.txtFaint
+            font.pixelSize: 12
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+
+        indicator: Glyph {
+            x: combo.width - width - 12
+            y: combo.height / 2 - height / 2
+            size: 14
+            color: window.txtFaint
+            path: window.icons.chevron
+            rotation: combo.popup.visible ? 180 : 0
+            Behavior on rotation { NumberAnimation { duration: window.tBase } }
+        }
+    }
+
     // Vertical EQ band. Fills outward from the zero line, because that's what it means.
     component BandSlider: ColumnLayout {
         id: band
@@ -739,14 +784,14 @@ ApplicationWindow {
                 // Navigation with a sliding indicator
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 6 * 44 + 5 * 6
+                    Layout.preferredHeight: 7 * 47 + 42
 
                     // The indicator floats; items don't each carry their own.
                     Rectangle {
                         width: parent.width
-                        height: 44
+                        height: 42
                         radius: 12
-                        y: window.navIndex * 50
+                        y: window.navIndex * 47
                         color: Qt.rgba(window.accent.r, window.accent.g, window.accent.b, 0.14)
                         border.width: 1
                         border.color: Qt.rgba(window.accent.r, window.accent.g, window.accent.b, 0.45)
@@ -772,7 +817,9 @@ ApplicationWindow {
                             { idx: 2, key: "nav_equalizer",       glyph: window.icons.sliders },
                             { idx: 3, key: "nav_audio_features",  glyph: window.icons.sparkle },
                             { idx: 4, key: "nav_device_switcher", glyph: window.icons.swap },
-                            { idx: 5, key: "nav_settings",        glyph: window.icons.settings }
+                            { idx: 5, key: "nav_battery",         glyph: window.icons.battery },
+                            { idx: 6, key: "nav_automation",      glyph: window.icons.keyboard },
+                            { idx: 7, key: "nav_settings",        glyph: window.icons.settings }
                         ]
 
                         delegate: Item {
@@ -781,8 +828,8 @@ ApplicationWindow {
                             readonly property bool current: window.navIndex === modelData.idx
 
                             width: parent.width
-                            height: 44
-                            y: modelData.idx * 50
+                            height: 42
+                            y: modelData.idx * 47
 
                             Rectangle {
                                 anchors.fill: parent
@@ -1627,20 +1674,21 @@ ApplicationWindow {
                             model: [
                                 { key: "dsee",     title: "DSEE Extreme",    desc: "AI restores the highs that compression threw away", glyph: window.icons.sparkle },
                                 { key: "speak",    title: "Speak-to-Chat",   desc: "Pauses playback and opens ambient when you talk",   glyph: window.icons.mic },
-                                { key: "adaptive", title: "Adaptive Volume", desc: "Balances level against your surroundings",          glyph: window.icons.sliders }
+                                { key: "adaptive", title: "Adaptive Volume", desc: "Balances level against your surroundings",          glyph: window.icons.sliders },
+                                { key: "pause",    title: "Pause When Taken Off", desc: "Pauses playback when you take the headphones off", glyph: window.icons.headphones }
                             ]
 
                             delegate: Card {
                                 id: featCard
                                 required property var modelData
-                                readonly property string featureKey: modelData.key === "speak" ? "speakToChat" : modelData.key === "adaptive" ? "adaptiveVolume" : "dsee"
+                                readonly property string featureKey: ({ dsee: "dsee", speak: "speakToChat", adaptive: "adaptiveVolume", pause: "pauseWhenTakenOff" })[modelData.key]
                                 readonly property var availability: controller.featureStatus[featureKey]
                                 readonly property bool known: controller.connected && availability && availability.availability === "valid"
-                                readonly property bool supported: modelData.key === "dsee" ? controller.hasDsee : modelData.key === "speak" ? controller.hasSpeakToChat : controller.hasAdaptiveVolume
+                                readonly property bool supported: ({ dsee: controller.hasDsee, speak: controller.hasSpeakToChat,
+                                                                     adaptive: controller.hasAdaptiveVolume, pause: controller.hasPauseWhenTakenOff })[modelData.key]
                                 enabled: supported && controller.connected
-                                readonly property bool on: modelData.key === "dsee" ? controller.dsee
-                                                         : modelData.key === "speak" ? controller.speakToChat
-                                                         : controller.adaptiveVolume
+                                readonly property bool on: ({ dsee: controller.dsee, speak: controller.speakToChat,
+                                                              adaptive: controller.adaptiveVolume, pause: controller.pauseWhenTakenOff })[modelData.key]
 
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 112
@@ -1697,6 +1745,7 @@ ApplicationWindow {
                                         onToggled: {
                                             if (featCard.modelData.key === "dsee") controller.setDsee(checked)
                                             else if (featCard.modelData.key === "speak") controller.setSpeakToChat(checked)
+                                            else if (featCard.modelData.key === "pause") controller.setPauseWhenTakenOff(checked)
                                             else controller.setAdaptiveVolume(checked)
                                         }
                                     }
@@ -1754,17 +1803,20 @@ ApplicationWindow {
 
                                 ComboBox {
                                     id: powerCombo
-                                    implicitWidth: 134
+                                    implicitWidth: 160
                                     implicitHeight: 38
-                                    model: ["Off", "5 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "3 Hours"]
-                                    currentIndex: controller.featureStatus.autoPowerOff && controller.featureStatus.autoPowerOff.availability === "valid" ? controller.autoPowerOff : -1
+                                    // Rows -> protocol indices. V1 (WH-1000XM4) only has Off and
+                                    // "when taken off"; V2 keeps its original list unchanged.
+                                    readonly property var codes: controller.protocolVersion === "V1" ? [0, 5] : [0, 1, 2, 3, 4, 5]
+                                    readonly property int confirmedRow: controller.featureStatus.autoPowerOff && controller.featureStatus.autoPowerOff.availability === "valid" ? codes.indexOf(controller.autoPowerOff) : -1
+                                    enabled: controller.connected && controller.hasAutoPowerOff
+                                    model: controller.protocolVersion === "V1" ? ["Off", "When Taken Off"] : ["Off", "5 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "3 Hours"]
+                                    currentIndex: confirmedRow
                                     Connections {
                                         target: controller
-                                        function onStateChanged() { powerCombo.currentIndex = Qt.binding(function() {
-                                            return controller.featureStatus.autoPowerOff && controller.featureStatus.autoPowerOff.availability === "valid" ? controller.autoPowerOff : -1
-                                        }) }
+                                        function onStateChanged() { powerCombo.currentIndex = Qt.binding(function() { return powerCombo.confirmedRow }) }
                                     }
-                                    onActivated: controller.setAutoPowerOff(index)
+                                    onActivated: controller.setAutoPowerOff(codes[index])
 
                                     background: Rectangle {
                                         radius: 11
@@ -1793,6 +1845,85 @@ ApplicationWindow {
                                         path: window.icons.chevron
                                         rotation: powerCombo.popup.visible ? 180 : 0
                                         Behavior on rotation { NumberAnimation { duration: window.tBase } }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Speak-to-Chat tuning: sensitivity and how long ambient stays on.
+                        Card {
+                            id: stcCard
+                            visible: controller.hasSpeakToChatConfig
+                            readonly property bool known: controller.connected && controller.featureStatus.speakToChatConfig !== undefined
+                                                          && controller.featureStatus.speakToChatConfig.availability === "valid"
+                            Layout.fillWidth: true
+                            Layout.columnSpan: 2
+                            Layout.preferredHeight: 112
+                            hovered: stcHover.hovered
+                            HoverHandler { id: stcHover }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 20
+                                anchors.rightMargin: 20
+                                spacing: 15
+
+                                Rectangle {
+                                    Layout.preferredWidth: 44
+                                    Layout.preferredHeight: 44
+                                    radius: 14
+                                    color: window.surfaceSunk
+                                    border.width: 1
+                                    border.color: window.line
+                                    Glyph {
+                                        anchors.centerIn: parent
+                                        path: window.icons.mic
+                                        size: 21
+                                        color: window.txtFaint
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 3
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        text: "Speak-to-Chat Tuning"
+                                        color: window.txt
+                                        font.pixelSize: 15
+                                        font.weight: Font.DemiBold
+                                    }
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        Layout.fillWidth: true
+                                        text: stcCard.known ? "How easily your voice triggers it, and how long ambient stays on after you stop talking"
+                                                            : "State unknown — waiting for device"
+                                        color: window.txtFaint
+                                        font.pixelSize: 11
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    spacing: 4
+                                    Text { textFormat: Text.PlainText; text: "Sensitivity"; color: window.txtFaint; font.pixelSize: 10 }
+                                    NeoCombo {
+                                        enabled: controller.connected
+                                        model: ["Auto", "High", "Low"]
+                                        confirmedIndex: stcCard.known ? controller.speakToChatSensitivity : -1
+                                        onActivated: controller.setSpeakToChatSensitivity(index)
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    spacing: 4
+                                    Text { textFormat: Text.PlainText; text: "Back to previous mode"; color: window.txtFaint; font.pixelSize: 10 }
+                                    NeoCombo {
+                                        implicitWidth: 150
+                                        enabled: controller.connected
+                                        model: ["Short", "Standard", "Long", "Never (manual)"]
+                                        confirmedIndex: stcCard.known ? controller.speakToChatTimeout : -1
+                                        onActivated: controller.setSpeakToChatTimeout(index)
                                     }
                                 }
                             }
@@ -1931,12 +2062,435 @@ ApplicationWindow {
             }
 
             // ==================================================
-            // 6 · SETTINGS
+            // 6 · BATTERY
             // ==================================================
             ViewPage {
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 36
+                    spacing: 18
+
+                    ColumnLayout {
+                        spacing: 5
+                        Eyebrow { text: "Power" }
+                        Text {
+                            textFormat: Text.PlainText
+                            text: "Battery"
+                            color: window.txt
+                            font.pixelSize: 28
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: -0.6
+                        }
+                        Text {
+                            textFormat: Text.PlainText
+                            text: "Level over the last 48 hours, how long it should last, and alerts."
+                            color: window.txtDim
+                            font.pixelSize: 13
+                        }
+                    }
+
+                    // Stat tiles
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        Repeater {
+                            model: [
+                                { label: "Level",
+                                  value: controller.connected && controller.batteryLevel >= 0 ? controller.batteryLevel + "%" : "—",
+                                  note: controller.connected ? (controller.isCharging ? "Charging" : "On battery") : "Headphones offline" },
+                                { label: "Time left",
+                                  value: battery.hoursLeft >= 0 ? "~" + (battery.hoursLeft >= 10 ? Math.round(battery.hoursLeft) : battery.hoursLeft.toFixed(1)) + " h" : "—",
+                                  note: battery.estimateSource === "usage" ? "Measured from your use"
+                                      : battery.estimateSource === "rated" ? "Sony's rating, until there's enough history"
+                                      : controller.isCharging ? "Not while charging" : "Needs a connected headset" },
+                                { label: "Full charge (rated)",
+                                  value: controller.connected ? Math.round(battery.ratedHours) + " h" : "—",
+                                  note: controller.noiseControlMode === "cancelling" ? "With noise cancelling on" : "With noise cancelling off" }
+                            ]
+
+                            delegate: Card {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 96
+
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 18
+                                    spacing: 2
+                                    Text { textFormat: Text.PlainText; text: modelData.label; color: window.txtFaint; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                    Text { textFormat: Text.PlainText; text: modelData.value; color: window.txt; font.pixelSize: 26; font.weight: Font.DemiBold }
+                                    Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: modelData.note; color: window.txtDim; font.pixelSize: 11; elide: Text.ElideRight }
+                                }
+                            }
+                        }
+                    }
+
+                    // History chart
+                    Card {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 200
+
+                        Canvas {
+                            id: batteryChart
+                            anchors.fill: parent
+                            anchors.margins: 18
+                            anchors.leftMargin: 44
+                            anchors.bottomMargin: 34
+
+                            readonly property real span: 48 * 3600 * 1000
+                            property real nowMs: Date.now()
+
+                            Timer { interval: 60000; running: batteryChart.visible; repeat: true; onTriggered: { batteryChart.nowMs = Date.now(); batteryChart.requestPaint() } }
+                            Connections { target: battery; function onHistoryChanged() { batteryChart.nowMs = Date.now(); batteryChart.requestPaint() } }
+                            onWidthChanged: requestPaint()
+                            onHeightChanged: requestPaint()
+                            onVisibleChanged: if (visible) { nowMs = Date.now(); requestPaint() }
+
+                            onPaint: {
+                                const ctx = getContext("2d")
+                                ctx.reset()
+                                const w = width, h = height
+                                const x = t => (t - (nowMs - span)) / span * w
+                                const y = level => h - level / 100 * h
+
+                                // Gridlines at 0 / 50 / 100 %.
+                                ctx.strokeStyle = window.line
+                                ctx.lineWidth = 1
+                                for (const level of [0, 50, 100]) {
+                                    ctx.beginPath(); ctx.moveTo(0, y(level) + 0.5); ctx.lineTo(w, y(level) + 0.5); ctx.stroke()
+                                }
+
+                                // One line per connected stretch; charging stretches in blue.
+                                const pts = battery.history
+                                ctx.lineWidth = 2.5
+                                ctx.lineJoin = "round"
+                                for (let i = 1; i < pts.length; ++i) {
+                                    const a = pts[i - 1], b = pts[i]
+                                    if (a.level < 0 || b.level < 0) continue
+                                    ctx.strokeStyle = (a.charging || b.charging) ? "#3B82F6" : window.success
+                                    ctx.beginPath()
+                                    ctx.moveTo(x(a.t), y(a.level))
+                                    ctx.lineTo(x(b.t), y(a.level))   // step: the level holds until the next reading
+                                    ctx.lineTo(x(b.t), y(b.level))
+                                    ctx.stroke()
+                                }
+                                // Extend the latest reading to now while connected.
+                                const last = pts.length ? pts[pts.length - 1] : null
+                                if (last && last.level >= 0 && controller.connected) {
+                                    ctx.strokeStyle = last.charging ? "#3B82F6" : window.success
+                                    ctx.beginPath(); ctx.moveTo(x(last.t), y(last.level)); ctx.lineTo(w, y(last.level)); ctx.stroke()
+                                    ctx.fillStyle = ctx.strokeStyle
+                                    ctx.beginPath(); ctx.arc(w - 1, y(last.level), 4, 0, 2 * Math.PI); ctx.fill()
+                                }
+                            }
+
+                            // Axis labels
+                            Repeater {
+                                model: [100, 50, 0]
+                                Text {
+                                    required property int modelData
+                                    textFormat: Text.PlainText
+                                    x: -36
+                                    y: batteryChart.height - modelData / 100 * batteryChart.height - height / 2
+                                    width: 28
+                                    horizontalAlignment: Text.AlignRight
+                                    text: modelData + "%"
+                                    color: window.txtFaint
+                                    font.pixelSize: 10
+                                }
+                            }
+                            Repeater {
+                                model: [{ f: 0, t: "48 h ago" }, { f: 0.5, t: "24 h ago" }, { f: 1, t: "now" }]
+                                Text {
+                                    required property var modelData
+                                    textFormat: Text.PlainText
+                                    x: modelData.f * batteryChart.width - (modelData.f === 0 ? 0 : modelData.f === 1 ? width : width / 2)
+                                    y: batteryChart.height + 10
+                                    text: modelData.t
+                                    color: window.txtFaint
+                                    font.pixelSize: 10
+                                }
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                visible: battery.history.length < 2
+                                textFormat: Text.PlainText
+                                text: "History builds up while the app runs with your headphones connected."
+                                color: window.txtFaint
+                                font.pixelSize: 12
+                            }
+                        }
+                    }
+
+                    // Alerts
+                    Card {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 76
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 20
+                            anchors.rightMargin: 20
+                            spacing: 15
+
+                            Glyph { path: window.icons.bolt; size: 20; color: window.accentSoft }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 3
+                                Text { textFormat: Text.PlainText; text: "Battery alerts"; color: window.txt; font.pixelSize: 14; font.weight: Font.DemiBold }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    Layout.fillWidth: true
+                                    text: "A Windows notification at 20% and 10%, and when a charge completes while connected."
+                                    color: window.txtDim
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
+                            }
+                            NeoSwitch {
+                                confirmedChecked: battery.alertsEnabled
+                                onToggled: battery.setAlertsEnabled(checked)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ==================================================
+            // 7 · AUTOMATION
+            // ==================================================
+            ViewPage {
+                id: automationPage
+                property string recording: ""      // action being recorded, "" when idle
+                property string recordError: ""
+
+                function startRecording(action) {
+                    recording = action
+                    recordError = ""
+                    hotkeys.setSuspended(true)
+                    keyCatcher.forceActiveFocus()
+                }
+                function stopRecording() {
+                    if (recording === "") return
+                    recording = ""
+                    hotkeys.setSuspended(false)
+                }
+                onVisibleChanged: if (!visible) stopRecording()
+
+                // Captures the next key press while a shortcut is being recorded.
+                Item {
+                    id: keyCatcher
+                    focus: true
+                    onActiveFocusChanged: if (!activeFocus) automationPage.stopRecording()
+                    Keys.onPressed: function(event) {
+                        if (automationPage.recording === "") return
+                        event.accepted = true
+                        const modifierKeys = [Qt.Key_Control, Qt.Key_Alt, Qt.Key_Shift, Qt.Key_Meta, Qt.Key_AltGr]
+                        if (modifierKeys.indexOf(event.key) >= 0) return
+                        if (event.key === Qt.Key_Escape) { automationPage.stopRecording(); return }
+                        if ((event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) && event.modifiers === Qt.NoModifier) {
+                            hotkeys.clear(automationPage.recording)
+                            automationPage.stopRecording()
+                            return
+                        }
+                        const error = hotkeys.assign(automationPage.recording, event.key, event.modifiers)
+                        if (error === "") automationPage.stopRecording()
+                        else automationPage.recordError = error
+                    }
+                }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 36
+                    spacing: 18
+
+                    ColumnLayout {
+                        spacing: 5
+                        Eyebrow { text: "Hands-free" }
+                        Text {
+                            textFormat: Text.PlainText
+                            text: "Automation"
+                            color: window.txt
+                            font.pixelSize: 28
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: -0.6
+                        }
+                        Text {
+                            textFormat: Text.PlainText
+                            text: "Let calls and keyboard shortcuts drive your headphones."
+                            color: window.txtDim
+                            font.pixelSize: 13
+                        }
+                    }
+
+                    // Calls
+                    Card {
+                        visible: calls.available
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 104
+                        active: calls.inCall && calls.enabled
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 20
+                            anchors.rightMargin: 20
+                            spacing: 15
+
+                            Rectangle {
+                                Layout.preferredWidth: 44
+                                Layout.preferredHeight: 44
+                                radius: 14
+                                color: calls.inCall ? Qt.rgba(window.success.r, window.success.g, window.success.b, 0.16) : window.surfaceSunk
+                                border.width: 1
+                                border.color: calls.inCall ? Qt.rgba(window.success.r, window.success.g, window.success.b, 0.5) : window.line
+                                Glyph { anchors.centerIn: parent; path: window.icons.mic; size: 21; color: calls.inCall ? window.success : window.txtFaint }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 3
+                                Text { textFormat: Text.PlainText; text: "Pause Speak-to-Chat during calls"; color: window.txt; font.pixelSize: 15; font.weight: Font.DemiBold }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    Layout.fillWidth: true
+                                    text: "When an app starts using your microphone (Teams, Zoom, Discord…), Speak-to-Chat turns off so your own voice doesn't switch to ambient. It comes back when the call ends."
+                                    color: window.txtFaint
+                                    font.pixelSize: 11
+                                    wrapMode: Text.WordWrap
+                                }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    Layout.fillWidth: true
+                                    text: !calls.inCall ? "No app is using the microphone"
+                                        : "In a call: " + calls.callApps + (calls.pausedSpeakToChat ? " — Speak-to-Chat paused" : "")
+                                    color: calls.inCall ? window.success : window.txtDim
+                                    font.pixelSize: 11
+                                    font.weight: Font.DemiBold
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            NeoSwitch {
+                                confirmedChecked: calls.enabled
+                                onToggled: calls.setEnabled(checked)
+                            }
+                        }
+                    }
+
+                    // Keyboard shortcuts
+                    Card {
+                        visible: hotkeys.available
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 20
+                            spacing: 6
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Glyph { path: window.icons.keyboard; size: 20; color: window.accentSoft }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 8
+                                    spacing: 2
+                                    Text { textFormat: Text.PlainText; text: "Keyboard shortcuts"; color: window.txt; font.pixelSize: 15; font.weight: Font.DemiBold }
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        Layout.fillWidth: true
+                                        text: automationPage.recording !== "" ? (automationPage.recordError || "Press the new shortcut. Esc cancels, Backspace removes it.")
+                                                                              : "Work from any app. Click a shortcut to change it."
+                                        color: automationPage.recordError !== "" ? window.danger : window.txtDim
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                                PillButton {
+                                    compact: true
+                                    text: "Reset"
+                                    onClicked: { automationPage.stopRecording(); hotkeys.resetDefaults() }
+                                }
+                            }
+
+                            Repeater {
+                                model: hotkeys.bindings
+                                delegate: RowLayout {
+                                    id: bindingRow
+                                    required property var modelData
+                                    readonly property bool isRecording: automationPage.recording === modelData.action
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 38
+                                    spacing: 12
+
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        Layout.fillWidth: true
+                                        text: bindingRow.modelData.title
+                                        color: window.txt
+                                        font.pixelSize: 13
+                                    }
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        visible: bindingRow.modelData.error !== ""
+                                        text: bindingRow.modelData.error
+                                        color: window.danger
+                                        font.pixelSize: 11
+                                    }
+                                    Rectangle {
+                                        Layout.preferredWidth: 170
+                                        Layout.preferredHeight: 32
+                                        radius: 9
+                                        color: bindingRow.isRecording ? Qt.rgba(window.accent.r, window.accent.g, window.accent.b, 0.18)
+                                             : shortcutHover.hovered ? window.surfaceHi : window.surfaceSunk
+                                        border.width: 1
+                                        border.color: bindingRow.isRecording ? window.accent : window.line
+                                        Text {
+                                            anchors.centerIn: parent
+                                            textFormat: Text.PlainText
+                                            text: bindingRow.isRecording ? "Press keys…"
+                                                : bindingRow.modelData.shortcut !== "" ? bindingRow.modelData.shortcut : "Not set"
+                                            color: bindingRow.isRecording ? window.accentSoft
+                                                 : bindingRow.modelData.shortcut !== "" ? window.txt : window.txtFaint
+                                            font.pixelSize: 12
+                                            font.weight: Font.DemiBold
+                                        }
+                                        HoverHandler { id: shortcutHover; cursorShape: Qt.PointingHandCursor }
+                                        TapHandler {
+                                            onTapped: bindingRow.isRecording ? automationPage.stopRecording()
+                                                                             : automationPage.startRecording(bindingRow.modelData.action)
+                                        }
+                                    }
+                                }
+                            }
+
+                            Item { Layout.fillHeight: true }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true; visible: !hotkeys.available }
+                }
+            }
+
+            // ==================================================
+            // 8 · SETTINGS
+            // ==================================================
+            ViewPage {
+                Flickable {
+                    id: settingsFlick
+                    anchors.fill: parent
+                    contentHeight: settingsColumn.implicitHeight + 72
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    ScrollBar.vertical: ScrollBar { policy: settingsFlick.contentHeight > settingsFlick.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+
+                ColumnLayout {
+                    id: settingsColumn
+                    x: 36
+                    y: 36
+                    width: settingsFlick.width - 72
                     spacing: 22
 
                     ColumnLayout {
@@ -2484,7 +3038,7 @@ ApplicationWindow {
                         wrapMode: Text.WordWrap
                     }
 
-                    Item { Layout.fillHeight: true }
+                }
                 }
             }
         }

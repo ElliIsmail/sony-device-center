@@ -38,6 +38,12 @@ add_executable(sony-device-center
     include/SystemTray.h
     src/LocalApi.cpp
     include/LocalApi.h
+    src/BatteryMonitor.cpp
+    include/BatteryMonitor.h
+    src/CallMonitor.cpp
+    include/CallMonitor.h
+    src/HotkeyManager.cpp
+    include/HotkeyManager.h
     qml.qrc
 )
 
@@ -145,7 +151,8 @@ if(BUILD_TESTING)
             ../../tests/ui/DeviceControllerTests.cpp
             src/DeviceCenterController.cpp include/DeviceCenterController.h
             src/DeviceBackend.cpp include/DeviceBackend.h
-            src/I18nManager.cpp include/I18nManager.h)
+            src/I18nManager.cpp include/I18nManager.h
+            src/BatteryMonitor.cpp include/BatteryMonitor.h)
         target_include_directories(sony-ui-tests PRIVATE include)
         target_compile_definitions(sony-ui-tests PRIVATE SONY_DEVICE_CENTER_VERSION="${SonyDeviceCenter_VERSION}")
         target_link_libraries(sony-ui-tests PRIVATE Qt6::Test Qt6::Gui Qt6::Widgets sony-core)

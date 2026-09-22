@@ -133,15 +133,9 @@ LocalApi::Response LocalApi::_handle(const QByteArray& method, const QByteArray&
 
     const QByteArray arg = path.mid(path.lastIndexOf('/') + 1);
     if (path.startsWith("/noise-control/")) {
-        QByteArray mode = arg;
-        if (mode == "next") {
-            // Same order as the overview quick actions, skipping what the model lacks.
-            const QString current = _controller->noiseControlMode();
-            mode = current == "cancelling" ? (_controller->hasAmbient() ? "ambient" : "off")
-                 : current == "ambient"    ? "off"
-                 : (_controller->hasAnc() ? "cancelling" : "ambient");
-        }
-        if (mode == "cancelling" && _controller->hasAnc()) _controller->setAnc(true);
+        const QByteArray& mode = arg;
+        if (mode == "next") _controller->cycleNoiseControl();
+        else if (mode == "cancelling" && _controller->hasAnc()) _controller->setAnc(true);
         else if (mode == "ambient" && _controller->hasAmbient())
             _controller->setAmbient(_controller->ambientLevel(), _controller->focusOnVoice());
         else if (mode == "off") _controller->setNoiseControlOff();
@@ -152,7 +146,7 @@ LocalApi::Response LocalApi::_handle(const QByteArray& method, const QByteArray&
     if (!_controller->hasSpeakToChat()) return {409, error("Speak-to-Chat is not supported by this device")};
     if (arg == "on") _controller->setSpeakToChat(true);
     else if (arg == "off") _controller->setSpeakToChat(false);
-    else if (arg == "toggle") _controller->setSpeakToChat(!_controller->speakToChat());
+    else if (arg == "toggle") _controller->toggleSpeakToChat();
     else return {400, error("use on, off or toggle")};
     return {200, ok()};
 }

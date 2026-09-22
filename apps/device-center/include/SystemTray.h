@@ -10,6 +10,7 @@ class QWindow;
 
 namespace sony::devicecenter {
 
+class BatteryMonitor;
 class DeviceCenterController;
 
 // Tray icon for the main window: shows the live battery level, restores the
@@ -23,6 +24,9 @@ public:
     ~SystemTray() override;
 
     void showWindow();
+    void showMessage(const QString& title, const QString& message);
+    /** Adds the time-left estimate to the tooltip. */
+    void setBatteryMonitor(BatteryMonitor* battery);
 
 private:
     void _retranslate();
@@ -30,6 +34,7 @@ private:
 
     DeviceCenterController* _controller;
     QPointer<QWindow> _window;
+    BatteryMonitor* _battery{nullptr};
     QSystemTrayIcon* _icon{nullptr};
     QMenu* _menu{nullptr};
     QAction* _show{nullptr};

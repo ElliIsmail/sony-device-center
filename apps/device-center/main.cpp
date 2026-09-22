@@ -7,7 +7,10 @@
 #include <QWindow>
 #include <memory>
 
+#include "BatteryMonitor.h"
+#include "CallMonitor.h"
 #include "DeviceCenterController.h"
+#include "HotkeyManager.h"
 #include "LocalApi.h"
 #include "SystemTray.h"
 
@@ -37,9 +40,15 @@ int main(int argc, char *argv[]) {
     sony::devicecenter::DeviceCenterController controller;
     // Local HTTP API for the Stream Deck plugin; follows the Settings switch.
     sony::devicecenter::LocalApi localApi(&controller);
+    sony::devicecenter::BatteryMonitor battery(&controller);
+    sony::devicecenter::CallMonitor calls(&controller);
+    sony::devicecenter::HotkeyManager hotkeys(&controller);
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("controller", &controller);
+    engine.rootContext()->setContextProperty("battery", &battery);
+    engine.rootContext()->setContextProperty("calls", &calls);
+    engine.rootContext()->setContextProperty("hotkeys", &hotkeys);
 
     const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
@@ -51,9 +60,13 @@ int main(int argc, char *argv[]) {
     engine.load(url);
 
     std::unique_ptr<sony::devicecenter::SystemTray> tray;
-    if (QSystemTrayIcon::isSystemTrayAvailable() && !engine.rootObjects().isEmpty()) {
-        if (auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst()))
-            tray = std::make_unique<sony::devicecenter::SystemTray>(&controller, window);
+    QWindow *window = engine.rootObjects().isEmpty() ? nullptr : qobject_cast<QWindow *>(engine.rootObjects().constFirst());
+    hotkeys.setWindow(window);
+    if (QSystemTrayIcon::isSystemTrayAvailable() && window) {
+        tray = std::make_unique<sony::devicecenter::SystemTray>(&controller, window);
+        tray->setBatteryMonitor(&battery);
+        QObject::connect(&battery, &sony::devicecenter::BatteryMonitor::notify, tray.get(),
+                         &sony::devicecenter::SystemTray::showMessage);
     }
 
     return app.exec();

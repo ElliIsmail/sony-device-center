@@ -91,6 +91,11 @@ void DeviceCenterController::_applySnapshot(const QByteArray& data) {
     _clearBass = eq.value("clearBass").toInt(); _equalizerBands = eq.value("bands").toArray().toVariantList();
     _dsee = s.value("dsee").toBool(); _speakToChat = s.value("speakToChat").toBool();
     _adaptiveVolume = s.value("adaptiveVolume").toBool(); _autoPowerOff = s.value("autoPowerOff").toInt();
+    const auto stc = s.value("speakToChatConfig").toObject();
+    _speakToChatSensitivity = stc.value("sensitivity").toInt(0);
+    _speakToChatTimeout = stc.value("timeout").toInt(1);
+    _pauseWhenTakenOff = s.value("pauseWhenTakenOff").toBool();
+    _protocolVersion = s.value("protocol").toString();
     _codec = _connected && valid("codec") ? s.value("codec").toString("Unknown") : "Unknown";
     emit stateChanged(); emit capabilitiesChanged();
 }
@@ -165,6 +170,21 @@ void DeviceCenterController::setDsee(bool enabled) { _send("dsee", {{"enabled",e
 void DeviceCenterController::setSpeakToChat(bool enabled) { _send("speakToChat", {{"enabled",enabled}}); }
 void DeviceCenterController::setAdaptiveVolume(bool enabled) { _send("adaptiveVolume", {{"enabled",enabled}}); }
 void DeviceCenterController::setAutoPowerOff(int index) { _send("autoPowerOff", {{"index",index}}); }
+void DeviceCenterController::setSpeakToChatSensitivity(int sensitivity) { _send("speakToChatConfig", {{"sensitivity",sensitivity}}); }
+void DeviceCenterController::setSpeakToChatTimeout(int timeout) { _send("speakToChatConfig", {{"timeout",timeout}}); }
+void DeviceCenterController::setPauseWhenTakenOff(bool enabled) { _send("pauseWhenTakenOff", {{"enabled",enabled}}); }
+void DeviceCenterController::cycleNoiseControl() {
+    if (_noiseControlMode == "cancelling") {
+        if (hasAmbient()) setAmbient(_ambientLevel, _focusOnVoice); else setNoiseControlOff();
+    } else if (_noiseControlMode == "ambient") {
+        setNoiseControlOff();
+    } else if (hasAnc()) {
+        setAnc(true);
+    } else {
+        setAmbient(_ambientLevel, _focusOnVoice);
+    }
+}
+void DeviceCenterController::toggleSpeakToChat() { if (hasSpeakToChat()) setSpeakToChat(!_speakToChat); }
 void DeviceCenterController::connectDevice(const QString& address, const QString& name) { _send("connect", {{"address",address},{"name",name}}); }
 void DeviceCenterController::disconnectDevice() { _send("disconnect"); }
 void DeviceCenterController::refreshDiscoveredDevices() {

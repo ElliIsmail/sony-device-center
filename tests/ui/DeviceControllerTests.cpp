@@ -1,4 +1,5 @@
 #include <QtTest>
+#include "BatteryMonitor.h"
 #include "DeviceCenterController.h"
 #include "sony/core/DeviceService.h"
 #include "../support/ReplyTransport.h"
@@ -59,6 +60,23 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.noiseControlMode(),QString("ambient"),1000);
         QCOMPARE(controller.ambientLevel(),12);
     }
+    void batteryEstimateUsesConnectedDischargeOnly() {
+        using Sample = sony::devicecenter::BatteryMonitor::Sample;
+        QVector<Sample> samples;
+        qint64 t = 1'000'000;
+        // Charged to 100, then 4 h of use at 5 min heartbeats losing 20 points...
+        samples.push_back({t, 100, true});
+        for (int i = 0; i <= 48; ++i) samples.push_back({t += 300, 100 - (i * 20) / 48, false});
+        // ...then a night switched off (a gap that must not count as use).
+        samples.push_back({t += 8 * 3600, 80, false});
+        // 5 %/h over 4 connected hours -> 80 % lasts 16 h.
+        QCOMPARE(qRound(sony::devicecenter::BatteryMonitor::estimateFromUsage(samples, 80)), 16);
+
+        // Too little history falls back (the caller then uses the rated figure).
+        QVector<Sample> short_{ {t, 90, false}, {t + 300, 89, false} };
+        QCOMPARE(sony::devicecenter::BatteryMonitor::estimateFromUsage(short_, 89), -1.0);
+    }
+
     void destructionDrainsWorkerAndCallbacks() {
         auto service = std::make_shared<SlowService>();
         auto controller = std::make_unique<DeviceCenterController>(nullptr,service);

@@ -49,6 +49,8 @@ void I18nManager::_initTranslations() {
     en["nav_equalizer"]       = "Equalizer";
     en["nav_audio_features"]  = "Audio Features";
     en["nav_device_switcher"] = "Device Switcher";
+    en["nav_battery"]         = "Battery";
+    en["nav_automation"]      = "Automation";
     en["nav_settings"]        = "Settings";
 
     en["settings_eyebrow"]    = "Preferences & Details";
@@ -96,6 +98,8 @@ void I18nManager::_initTranslations() {
     pt["nav_equalizer"]       = "Equalizador";
     pt["nav_audio_features"]  = "Recursos de Áudio";
     pt["nav_device_switcher"] = "Alternar Dispositivo";
+    pt["nav_battery"]         = "Bateria";
+    pt["nav_automation"]      = "Automação";
     pt["nav_settings"]        = "Configurações";
 
     pt["settings_eyebrow"]    = "Preferências & Detalhes";
@@ -142,6 +146,8 @@ void I18nManager::_initTranslations() {
     es["nav_equalizer"]       = "Ecualizador";
     es["nav_audio_features"]  = "Funciones de Audio";
     es["nav_device_switcher"] = "Cambiar Dispositivo";
+    es["nav_battery"]         = "Batería";
+    es["nav_automation"]      = "Automatización";
     es["nav_settings"]        = "Ajustes";
 
     es["settings_eyebrow"]    = "Preferencias y Detalles";
@@ -188,6 +194,8 @@ void I18nManager::_initTranslations() {
     de["nav_equalizer"]       = "Equalizer";
     de["nav_audio_features"]  = "Audiofunktionen";
     de["nav_device_switcher"] = "Geräte wechseln";
+    de["nav_battery"]         = "Akku";
+    de["nav_automation"]      = "Automatisierung";
     de["nav_settings"]        = "Einstellungen";
 
     de["settings_eyebrow"]    = "Präferenzen & Details";
@@ -234,6 +242,8 @@ void I18nManager::_initTranslations() {
     fr["nav_equalizer"]       = "Égaliseur";
     fr["nav_audio_features"]  = "Fonctions Audio";
     fr["nav_device_switcher"] = "Changer d'Appareil";
+    fr["nav_battery"]         = "Batterie";
+    fr["nav_automation"]      = "Automatisation";
     fr["nav_settings"]        = "Paramètres";
 
     fr["settings_eyebrow"]    = "Préférences & Détails";
@@ -280,6 +290,8 @@ void I18nManager::_initTranslations() {
     ja["nav_equalizer"]       = "イコライザー";
     ja["nav_audio_features"]  = "オーディオ機能";
     ja["nav_device_switcher"] = "デバイス切り替え";
+    ja["nav_battery"]         = "バッテリー";
+    ja["nav_automation"]      = "自動化";
     ja["nav_settings"]        = "設定";
 
     ja["settings_eyebrow"]    = "設定と情報";

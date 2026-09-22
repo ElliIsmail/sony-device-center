@@ -38,6 +38,10 @@ class DeviceCenterController : public QObject {
     Q_PROPERTY(bool dsee READ dsee NOTIFY stateChanged)
     Q_PROPERTY(bool speakToChat READ speakToChat NOTIFY stateChanged)
     Q_PROPERTY(bool adaptiveVolume READ adaptiveVolume NOTIFY stateChanged)
+    Q_PROPERTY(int speakToChatSensitivity READ speakToChatSensitivity NOTIFY stateChanged)
+    Q_PROPERTY(int speakToChatTimeout READ speakToChatTimeout NOTIFY stateChanged)
+    Q_PROPERTY(bool pauseWhenTakenOff READ pauseWhenTakenOff NOTIFY stateChanged)
+    Q_PROPERTY(QString protocolVersion READ protocolVersion NOTIFY stateChanged)
     Q_PROPERTY(int autoPowerOff READ autoPowerOff NOTIFY stateChanged)
     Q_PROPERTY(QString heroImagePath READ heroImagePath NOTIFY stateChanged)
 
@@ -48,6 +52,9 @@ class DeviceCenterController : public QObject {
     Q_PROPERTY(bool hasDsee READ hasDsee NOTIFY capabilitiesChanged)
     Q_PROPERTY(bool hasSpeakToChat READ hasSpeakToChat NOTIFY capabilitiesChanged)
     Q_PROPERTY(bool hasAdaptiveVolume READ hasAdaptiveVolume NOTIFY capabilitiesChanged)
+    Q_PROPERTY(bool hasSpeakToChatConfig READ hasSpeakToChatConfig NOTIFY capabilitiesChanged)
+    Q_PROPERTY(bool hasPauseWhenTakenOff READ hasPauseWhenTakenOff NOTIFY capabilitiesChanged)
+    Q_PROPERTY(bool hasAutoPowerOff READ hasAutoPowerOff NOTIFY capabilitiesChanged)
 
     Q_PROPERTY(QVariantList pairedDevices READ pairedDevices NOTIFY pairedDevicesChanged)
 
@@ -85,6 +92,10 @@ public:
     [[nodiscard]] bool speakToChat() const;
     [[nodiscard]] bool adaptiveVolume() const;
     [[nodiscard]] int autoPowerOff() const;
+    [[nodiscard]] int speakToChatSensitivity() const { return _speakToChatSensitivity; }
+    [[nodiscard]] int speakToChatTimeout() const { return _speakToChatTimeout; }
+    [[nodiscard]] bool pauseWhenTakenOff() const { return _pauseWhenTakenOff; }
+    [[nodiscard]] QString protocolVersion() const { return _protocolVersion; }
     [[nodiscard]] QString heroImagePath() const;
 
     [[nodiscard]] bool hasAnc() const;
@@ -94,6 +105,9 @@ public:
     [[nodiscard]] bool hasDsee() const;
     [[nodiscard]] bool hasSpeakToChat() const;
     [[nodiscard]] bool hasAdaptiveVolume() const;
+    [[nodiscard]] bool hasSpeakToChatConfig() const { return _capabilities.value("speakToChatConfig").toBool(); }
+    [[nodiscard]] bool hasPauseWhenTakenOff() const { return _capabilities.value("pauseWhenTakenOff").toBool(); }
+    [[nodiscard]] bool hasAutoPowerOff() const { return _capabilities.value("autoPowerOff").toBool(); }
 
     [[nodiscard]] QVariantList pairedDevices() const;
 
@@ -115,6 +129,13 @@ public:
     Q_INVOKABLE void setSpeakToChat(bool enabled);
     Q_INVOKABLE void setAdaptiveVolume(bool enabled);
     Q_INVOKABLE void setAutoPowerOff(int index);
+    Q_INVOKABLE void setSpeakToChatSensitivity(int sensitivity);
+    Q_INVOKABLE void setSpeakToChatTimeout(int timeout);
+    Q_INVOKABLE void setPauseWhenTakenOff(bool enabled);
+    // Shared by the tray, the local API, keyboard shortcuts and the Stream Deck:
+    // Noise Cancelling -> Ambient -> Off, skipping what the model lacks.
+    Q_INVOKABLE void cycleNoiseControl();
+    Q_INVOKABLE void toggleSpeakToChat();
 
     Q_INVOKABLE void setAutostart(bool enable);
     Q_INVOKABLE void setMinimizeToTray(bool enable);
@@ -164,6 +185,10 @@ private:
     bool _speakToChat{false};
     bool _adaptiveVolume{false};
     int _autoPowerOff{0};
+    int _speakToChatSensitivity{0};
+    int _speakToChatTimeout{1};
+    bool _pauseWhenTakenOff{false};
+    QString _protocolVersion;
     QVariantList _pairedDevices;
     QString _currentLanguage{"en"};
     bool _minimizeToTray{true};
