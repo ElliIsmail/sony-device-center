@@ -61,6 +61,7 @@ void I18nManager::_initTranslations() {
     en["minimize_to_tray_desc"]= "Keep running in the system tray when the window is minimized or closed.";
     en["tray_show"]          = "Show Window";
     en["tray_quit"]          = "Quit";
+    en["speak_to_chat"]       = "Speak-to-Chat";
     en["language"]            = "Display Language";
     en["language_desc"]       = "Select your preferred language for the user interface.";
     en["about_app"]           = "About Application";
@@ -281,6 +282,7 @@ void I18nManager::_initTranslations() {
     ja["minimize_to_tray_desc"]= "ウィンドウを最小化または閉じたときにシステムトレイで動作し続けます。";
     ja["tray_show"]          = "ウィンドウを表示";
     ja["tray_quit"]          = "終了";
+    ja["speak_to_chat"]       = "スピーク・トゥ・チャット";
     ja["language"]            = "表示言語";
     ja["language_desc"]       = "UIの表示言語を選択します。";
     ja["about_app"]           = "アプリについて";
