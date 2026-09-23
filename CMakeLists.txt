@@ -54,6 +54,44 @@ if(WIN32)
     include(InstallRequiredSystemLibraries)
 endif()
 
+if(WIN32 AND TARGET sony-device-center)
+    # The build-tree .exe has no Qt DLLs beside it and only starts from a
+    # shell with Qt on PATH, so autostart at login fails with it. Every
+    # Release build instead refreshes a self-contained per-user install that
+    # the autostart entry can point at. Off on CI, where nobody logs in.
+    if(DEFINED ENV{CI})
+        set(_sony_user_install_default OFF)
+    else()
+        set(_sony_user_install_default ON)
+    endif()
+    option(SONY_USER_INSTALL
+        "Install to SONY_USER_INSTALL_PREFIX after each Release build" ${_sony_user_install_default})
+    file(TO_CMAKE_PATH "$ENV{LOCALAPPDATA}/Programs/SonyDeviceCenter" _sony_user_prefix)
+    set(SONY_USER_INSTALL_PREFIX "${_sony_user_prefix}" CACHE PATH
+        "Per-user install location refreshed by SONY_USER_INSTALL")
+
+    if(SONY_USER_INSTALL)
+        set(_sony_user_stamp "${CMAKE_BINARY_DIR}/user-install.stamp")
+        set(_sony_user_script "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/user-install.cmake")
+        add_custom_command(OUTPUT "${_sony_user_stamp}"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+                "-DPREFIX=${SONY_USER_INSTALL_PREFIX}"
+                "-DCONFIG=$<CONFIG>"
+                "-DSTAMP=${_sony_user_stamp}"
+                -P "${_sony_user_script}"
+            DEPENDS
+                "$<TARGET_FILE:sony-device-center>"
+                "$<TARGET_FILE:sonyd>"
+                "$<TARGET_FILE:sonyctl>"
+                "${_sony_user_script}"
+            COMMENT "Installing to ${SONY_USER_INSTALL_PREFIX}"
+            VERBATIM)
+        add_custom_target(user-install ALL DEPENDS "${_sony_user_stamp}")
+        add_dependencies(user-install sony-device-center sonyd sonyctl)
+    endif()
+endif()
+
 if(UNIX AND NOT APPLE)
     install(FILES packaging/linux/sony-device-center.desktop
             DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
