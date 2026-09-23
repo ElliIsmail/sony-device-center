@@ -2,7 +2,8 @@
 #
 # Regenerates every packaged icon from the canonical brand source in assets/.
 # assets/app-icon.svg is the single source of truth; everything below is a
-# derivative and should never be edited by hand.
+# derivative and should never be edited by hand. assets/app-icon-small.svg is
+# its hinted twin, used for every render of 32 px and below.
 #
 # Requires ImageMagick 7 built with the rsvg delegate (magick -list delegate).
 #
@@ -12,13 +13,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="${ROOT}/assets/app-icon.svg"
+SMALL="${ROOT}/assets/app-icon-small.svg"
 TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 
-if [ ! -f "${SRC}" ]; then
-    echo "error: brand source not found: ${SRC}" >&2
-    exit 1
-fi
+for f in "${SRC}" "${SMALL}"; do
+    if [ ! -f "${f}" ]; then
+        echo "error: brand source not found: ${f}" >&2
+        exit 1
+    fi
+done
 
 echo "Brand source: ${SRC}"
 
@@ -27,11 +31,16 @@ echo "Brand source: ${SRC}"
 cp "${SRC}" "${ROOT}/packaging/linux/sony-device-center.svg"
 magick -background none "${SRC}" -resize 512x512 -depth 8 -strip \
     "${ROOT}/packaging/linux/sony-device-center.png"
-echo "  linux  sony-device-center.svg, sony-device-center.png (512)"
+magick -background none "${SMALL}" -resize 32x32 -depth 8 -strip \
+    "${ROOT}/packaging/linux/sony-device-center-32.png"
+echo "  linux  sony-device-center.svg, sony-device-center.png (512, 32)"
 
 # --- Windows -----------------------------------------------------------------
-magick -background none "${SRC}" \
-    -define icon:auto-resize=256,128,64,48,32,16 \
+magick -background none \
+    \( "${SRC}" -resize 256x256 \) \( "${SRC}" -resize 128x128 \) \
+    \( "${SRC}" -resize 64x64 \) \( "${SRC}" -resize 48x48 \) \
+    \( "${SMALL}" -resize 32x32 \) \( "${SMALL}" -resize 24x24 \) \
+    \( "${SMALL}" -resize 20x20 \) \( "${SMALL}" -resize 16x16 \) \
     "${ROOT}/packaging/windows/sony-device-center.ico"
 echo "  win    sony-device-center.ico (16-256)"
 
@@ -47,7 +56,8 @@ echo "  docs   app-icon.svg, app-icon.png (256)"
 # .icns is a flat container of typed chunks; the modern types hold PNG data
 # verbatim, so it can be assembled without Apple's iconutil.
 for px in 16 32 64 128 256 512 1024; do
-    magick -background none "${SRC}" -resize "${px}x${px}" -depth 8 -strip \
+    src="${SRC}"; [ "${px}" -le 32 ] && src="${SMALL}"
+    magick -background none "${src}" -resize "${px}x${px}" -depth 8 -strip \
         "${TMP}/icon_${px}.png"
 done
 

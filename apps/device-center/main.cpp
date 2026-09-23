@@ -35,7 +35,11 @@ int main(int argc, char *argv[]) {
 
     // The raster form is used deliberately: QIcon can only read the SVG brand
     // asset when Qt's qsvg image plugin is deployed alongside the binary.
-    app.setWindowIcon(QIcon(":/resources/brand/app-icon.png"));
+    // The 32 px file is rendered from the hinted small variant, so the tray
+    // and taskbar do not get a blurry downscale of the 512 px icon.
+    QIcon appIcon(":/resources/brand/app-icon.png");
+    appIcon.addFile(":/resources/brand/app-icon-32.png");
+    app.setWindowIcon(appIcon);
 
     sony::devicecenter::DeviceCenterController controller;
     // Local HTTP API for the Stream Deck plugin; follows the Settings switch.
