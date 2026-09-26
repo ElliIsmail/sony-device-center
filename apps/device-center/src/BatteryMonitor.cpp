@@ -16,7 +16,7 @@ namespace sony::devicecenter {
 namespace {
 
 constexpr qint64 kKeepSeconds = 14 * 24 * 3600;
-constexpr qint64 kChartSeconds = 48 * 3600;
+constexpr int kChartDays = 7;
 constexpr int kHeartbeatMs = 5 * 60 * 1000;
 // Two samples further apart than this were not one continuous session.
 constexpr qint64 kMaxGapSeconds = 12 * 60;
@@ -26,6 +26,33 @@ constexpr double kMinHoursForUsage = 1.0;
 
 qint64 now() { return QDateTime::currentSecsSinceEpoch(); }
 
+using Mode = BatteryMonitor::Mode;
+
+Mode modeFrom(const QString& mode) {
+    if (mode == "cancelling") return Mode::Cancelling;
+    if (mode == "ambient") return Mode::Ambient;
+    if (mode == "off") return Mode::Off;
+    return Mode::Unknown;
+}
+
+// CSV field for a mode; empty when unknown, which is also how older lines read.
+const char* modeField(Mode mode) {
+    switch (mode) {
+    case Mode::Cancelling: return "nc";
+    case Mode::Ambient: return "amb";
+    case Mode::Off: return "off";
+    case Mode::Unknown: break;
+    }
+    return "";
+}
+
+Mode modeFromField(const QString& field) {
+    if (field == "nc") return Mode::Cancelling;
+    if (field == "amb") return Mode::Ambient;
+    if (field == "off") return Mode::Off;
+    return Mode::Unknown;
+}
+
 } // namespace
 
 BatteryMonitor::BatteryMonitor(DeviceCenterController* controller, QObject* parent)
@@ -34,6 +61,7 @@ BatteryMonitor::BatteryMonitor(DeviceCenterController* controller, QObject* pare
     _alertsEnabled = settings.value("batteryAlerts", true).toBool();
     _firstAlert = settings.value("batteryAlertFirst", 20).toInt();
     _secondAlert = settings.value("batteryAlertSecond", 10).toInt();
+    _fullChargeAlert = settings.value("batteryAlertFull", true).toBool();
     if (_secondAlert >= _firstAlert) { _firstAlert = 20; _secondAlert = 10; }
 
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -43,7 +71,7 @@ BatteryMonitor::BatteryMonitor(DeviceCenterController* controller, QObject* pare
 
     _heartbeat.setInterval(kHeartbeatMs);
     connect(&_heartbeat, &QTimer::timeout, this, [this] {
-        if (_controller->isConnected() && _lastLevel >= 0) _record(_lastLevel, _lastCharging, true);
+        if (_controller->isConnected() && _lastLevel >= 0) _record(_lastLevel, _lastCharging, _lastMode, true);
     });
     _heartbeat.start();
 
@@ -74,33 +102,42 @@ void BatteryMonitor::setAlertLevels(int first, int second) {
     emit alertLevelsChanged();
 }
 
+void BatteryMonitor::setFullChargeAlert(bool enabled) {
+    if (_fullChargeAlert == enabled) return;
+    _fullChargeAlert = enabled;
+    QSettings settings("SonyBridge", "SonyDeviceCenter");
+    settings.setValue("batteryAlertFull", enabled);
+    emit fullChargeAlertChanged();
+}
+
 void BatteryMonitor::_onState() {
     const bool connected = _controller->isConnected();
     const int level = _controller->batteryLevel();
     const bool charging = _controller->isCharging();
+    const Mode mode = modeFrom(_controller->noiseControlMode());
 
     if (!connected || level < 0) {
-        if (_wasConnected) _record(-1, false, true);  // disconnect marker
+        if (_wasConnected) _record(-1, false, Mode::Unknown, true);  // disconnect marker
         _wasConnected = false;
         return;
     }
     _wasConnected = true;
-    if (level != _lastLevel || charging != _lastCharging) {
-        _checkAlerts(level, charging);
-        _record(level, charging);
-    }
+    if (level != _lastLevel || charging != _lastCharging) _checkAlerts(level, charging);
+    // Mode changes are recorded too, so time can be split by noise control.
+    _record(level, charging, mode);
     _updateEstimate();  // the rated fallback depends on the noise control mode
 }
 
-void BatteryMonitor::_record(int level, bool charging, bool force) {
-    if (!force && level == _lastLevel && charging == _lastCharging) return;
+void BatteryMonitor::_record(int level, bool charging, Mode mode, bool force) {
+    if (!force && level == _lastLevel && charging == _lastCharging && mode == _lastMode) return;
     if (level >= 0) {
         _lastLevel = level;
         _lastCharging = charging;
+        _lastMode = mode;
     } else {
         _lastLevel = -1;
     }
-    const Sample sample{now(), level, charging};
+    const Sample sample{now(), level, charging, mode};
     _samples.push_back(sample);
     _append(sample);
     emit historyChanged();
@@ -121,7 +158,7 @@ void BatteryMonitor::_checkAlerts(int level, bool charging) {
     } else if (!charging && level <= _firstAlert && !_alertedFirst) {
         _alertedFirst = true;
         emit notify(device + " battery low", QString("%1% left.").arg(level));
-    } else if (charging && level >= 100 && !_alertedFull) {
+    } else if (charging && level >= 100 && !_alertedFull && _fullChargeAlert) {
         _alertedFull = true;
         emit notify(device + " fully charged", "You can unplug your headphones.");
     }
@@ -175,13 +212,46 @@ void BatteryMonitor::_updateEstimate() {
     }
 }
 
-QVariantList BatteryMonitor::history() const {
-    QVariantList out;
-    const qint64 from = now() - kChartSeconds;
-    for (const Sample& s : _samples) {
-        if (s.t < from) continue;
-        out.append(QVariantMap{{"t", s.t * 1000}, {"level", s.level}, {"charging", s.charging}});
+QVector<BatteryMonitor::DayUsage> BatteryMonitor::usageByDay(const QVector<Sample>& samples,
+                                                             qint64 nowSecs, int days) {
+    // Local midnights, oldest first; the last entry is today.
+    QVector<DayUsage> out;
+    const QDate today = QDateTime::fromSecsSinceEpoch(nowSecs).date();
+    for (int i = days - 1; i >= 0; --i)
+        out.push_back({QDateTime(today.addDays(-i), QTime(0, 0)).toSecsSinceEpoch(), 0, 0, 0, 0, 0, false});
+
+    const auto dayOf = [&](qint64 t) -> DayUsage* {
+        for (qsizetype i = out.size() - 1; i >= 0; --i)
+            if (t >= out[i].dayStart) return &out[i];
+        return nullptr;
+    };
+    for (qsizetype i = 0; i < samples.size(); ++i) {
+        const Sample& a = samples[i];
+        if (a.level < 0) continue;
+        DayUsage* day = dayOf(a.t);
+        if (!day) continue;
+        if (a.charging) day->charged = true;
+        // Same rule as the estimate: only short steps between samples were connected time.
+        if (i + 1 >= samples.size() || a.charging || samples[i + 1].t - a.t > kMaxGapSeconds) continue;
+        // The mode holds until the next sample, like the level.
+        const double hours = (samples[i + 1].t - a.t) / 3600.0;
+        day->hours += hours;
+        switch (a.mode) {
+        case Mode::Cancelling: day->cancelling += hours; break;
+        case Mode::Ambient: day->ambient += hours; break;
+        case Mode::Off: day->off += hours; break;
+        case Mode::Unknown: day->unknown += hours; break;
+        }
     }
+    return out;
+}
+
+QVariantList BatteryMonitor::dailyUsage() const {
+    QVariantList out;
+    for (const DayUsage& d : usageByDay(_samples, now(), kChartDays))
+        out.append(QVariantMap{{"day", d.dayStart * 1000}, {"hours", d.hours},
+                               {"cancelling", d.cancelling}, {"ambient", d.ambient},
+                               {"off", d.off}, {"unknown", d.unknown}, {"charged", d.charged}});
     return out;
 }
 
@@ -193,8 +263,9 @@ void BatteryMonitor::_load() {
     bool pruned = false;
     while (!in.atEnd()) {
         const QStringList parts = in.readLine().split(',');
-        if (parts.size() != 3) continue;
-        const Sample s{parts[0].toLongLong(), parts[1].toInt(), parts[2] == "1"};
+        if (parts.size() != 3 && parts.size() != 4) continue;
+        const Sample s{parts[0].toLongLong(), parts[1].toInt(), parts[2] == "1",
+                       parts.size() == 4 ? modeFromField(parts[3]) : Mode::Unknown};
         if (s.t < keepFrom) { pruned = true; continue; }
         _samples.push_back(s);
     }
@@ -204,7 +275,7 @@ void BatteryMonitor::_load() {
     if (pruned) {
         if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
             QTextStream out(&file);
-            for (const Sample& s : _samples) out << s.t << ',' << s.level << ',' << (s.charging ? 1 : 0) << '\n';
+            for (const Sample& s : _samples) out << s.t << ',' << s.level << ',' << (s.charging ? 1 : 0) << ',' << modeField(s.mode) << '\n';
         }
     }
 }
@@ -213,7 +284,7 @@ void BatteryMonitor::_append(const Sample& sample) {
     QFile file(_path);
     if (!file.open(QIODevice::Append | QIODevice::Text)) return;
     QTextStream out(&file);
-    out << sample.t << ',' << sample.level << ',' << (sample.charging ? 1 : 0) << '\n';
+    out << sample.t << ',' << sample.level << ',' << (sample.charging ? 1 : 0) << ',' << modeField(sample.mode) << '\n';
 }
 
 } // namespace sony::devicecenter

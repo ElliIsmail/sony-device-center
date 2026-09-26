@@ -391,6 +391,106 @@ ApplicationWindow {
         contentItem: Item {}
     }
 
+    // Round −/+ button used by NeoStepper.
+    component StepButton: Button {
+        id: stepBtn
+        property string label: ""
+        implicitWidth: 30
+        implicitHeight: 30
+        autoRepeat: true
+        hoverEnabled: true
+        background: Rectangle {
+            radius: width / 2
+            color: stepBtn.pressed ? window.lineHi : stepBtn.hovered ? window.surfaceHi : "transparent"
+            Behavior on color { ColorAnimation { duration: window.tFast } }
+        }
+        contentItem: Text {
+            textFormat: Text.PlainText
+            text: stepBtn.label
+            color: stepBtn.enabled ? window.txt : window.txtFaint
+            font.pixelSize: 16
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    // Compact −/+ number picker. Holding a button repeats; `stepped` carries the new value.
+    component NeoStepper: Rectangle {
+        id: stepper
+        property int value: 0
+        property int from: 0
+        property int to: 100
+        property string suffix: ""
+        property color tint: window.accentSoft
+        signal stepped(int value)
+
+        implicitWidth: 112
+        implicitHeight: 34
+        radius: height / 2
+        color: window.surfaceSunk
+        border.width: 1
+        border.color: window.line
+        opacity: enabled ? 1 : 0.45
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 2
+            spacing: 0
+            StepButton {
+                label: "−"
+                enabled: stepper.value > stepper.from
+                onClicked: stepper.stepped(stepper.value - 1)
+            }
+            Text {
+                Layout.fillWidth: true
+                textFormat: Text.PlainText
+                text: stepper.value + stepper.suffix
+                color: stepper.tint
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                horizontalAlignment: Text.AlignHCenter
+            }
+            StepButton {
+                label: "+"
+                enabled: stepper.value < stepper.to
+                onClicked: stepper.stepped(stepper.value + 1)
+            }
+        }
+    }
+
+    // Small checkbox with a label, in the app's colours.
+    component NeoCheck: CheckBox {
+        id: check
+        hoverEnabled: true
+        spacing: 9
+        padding: 0
+        indicator: Rectangle {
+            x: check.leftPadding
+            anchors.verticalCenter: parent.verticalCenter
+            width: 18; height: 18; radius: 5
+            color: check.checked ? window.accent : window.surfaceSunk
+            border.width: 1
+            border.color: check.checked ? window.accent : (check.hovered ? window.lineHi : window.line)
+            Behavior on color { ColorAnimation { duration: window.tFast } }
+            Glyph {
+                anchors.centerIn: parent
+                visible: check.checked
+                path: "M5 12.5l4.5 4.5L19 7.5"
+                size: 14
+                weight: 2.4
+                color: "white"
+            }
+        }
+        contentItem: Text {
+            leftPadding: check.indicator.width + check.spacing
+            textFormat: Text.PlainText
+            text: check.text
+            color: window.txtDim
+            font.pixelSize: 12
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
     // Horizontal slider with a gradient fill and a handle that reacts.
     component NeoSlider: Slider {
         id: sl
@@ -2083,7 +2183,7 @@ ApplicationWindow {
                         }
                         Text {
                             textFormat: Text.PlainText
-                            text: "Level over the last 48 hours, how long it should last, and alerts."
+                            text: "How long it lasts, how much you use it, and alerts."
                             color: window.txtDim
                             font.pixelSize: 13
                         }
@@ -2091,143 +2191,372 @@ ApplicationWindow {
 
                     // Stat tiles
                     RowLayout {
+                        id: batteryTiles
                         Layout.fillWidth: true
                         spacing: 14
 
-                        Repeater {
-                            model: [
-                                { label: "Level",
-                                  value: controller.connected && controller.batteryLevel >= 0 ? controller.batteryLevel + "%" : "—",
-                                  note: controller.connected ? (controller.isCharging ? "Charging" : "On battery") : "Headphones offline" },
-                                { label: "Time left",
-                                  value: battery.hoursLeft >= 0 ? "~" + (battery.hoursLeft >= 10 ? Math.round(battery.hoursLeft) : battery.hoursLeft.toFixed(1)) + " h" : "—",
-                                  note: battery.estimateSource === "usage" ? "Measured from your use"
-                                      : battery.estimateSource === "rated" ? "Sony's rating, until there's enough history"
-                                      : controller.isCharging ? "Not while charging" : "Needs a connected headset" },
-                                { label: "Full charge (rated)",
-                                  value: controller.connected ? Math.round(battery.ratedHours) + " h" : "—",
-                                  note: controller.noiseControlMode === "cancelling" ? "With noise cancelling on" : "With noise cancelling off" }
-                            ]
+                        property real nowMs: Date.now()
+                        Timer { interval: 60000; running: batteryTiles.visible; repeat: true; onTriggered: batteryTiles.nowMs = Date.now() }
+                        onVisibleChanged: if (visible) nowMs = Date.now()
 
-                            delegate: Card {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 96
+                        readonly property bool known: controller.connected && controller.batteryLevel >= 0
+                        // What a full charge actually lasts for you, once there's enough history.
+                        readonly property real measuredFull: battery.estimateSource === "usage" && controller.batteryLevel > 0
+                                                             ? battery.hoursLeft * 100 / controller.batteryLevel : -1
+                        readonly property real fullHours: measuredFull > 0 ? measuredFull : battery.ratedHours
+                        readonly property string ncState: controller.noiseControlMode === "cancelling" ? "on" : "off"
+
+                        function hoursText(h) { return (h >= 10 ? Math.round(h) : h.toFixed(1)) + " h" }
+                        function emptyAt() {
+                            const d = new Date(nowMs + battery.hoursLeft * 3600 * 1000)
+                            const sameDay = d.toDateString() === new Date(nowMs).toDateString()
+                            return Qt.formatDateTime(d, sameDay ? "hh:mm" : "ddd hh:mm")
+                        }
+
+                        // Level
+                        Card {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 108
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 18
+                                spacing: 14
 
                                 ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 18
+                                    Layout.fillWidth: true
                                     spacing: 2
-                                    Text { textFormat: Text.PlainText; text: modelData.label; color: window.txtFaint; font.pixelSize: 11; font.weight: Font.DemiBold }
-                                    Text { textFormat: Text.PlainText; text: modelData.value; color: window.txt; font.pixelSize: 26; font.weight: Font.DemiBold }
-                                    Text { textFormat: Text.PlainText; Layout.fillWidth: true; text: modelData.note; color: window.txtDim; font.pixelSize: 11; elide: Text.ElideRight }
+                                    Text { textFormat: Text.PlainText; text: "Level"; color: window.txtFaint; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                    Text { textFormat: Text.PlainText; text: batteryTiles.known ? controller.batteryLevel + "%" : "—"; color: window.txt; font.pixelSize: 26; font.weight: Font.DemiBold }
+                                    Text {
+                                        textFormat: Text.PlainText
+                                        Layout.fillWidth: true
+                                        text: controller.connected ? (controller.isCharging ? "Charging" : "On battery") : "Headphones offline"
+                                        color: controller.isCharging ? "#3B82F6" : window.txtDim
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                Canvas {
+                                    Layout.preferredWidth: 56
+                                    Layout.preferredHeight: 56
+                                    property real level: batteryTiles.known ? controller.batteryLevel : 0
+                                    property bool charging: controller.isCharging
+                                    Behavior on level { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
+                                    onLevelChanged: requestPaint()
+                                    onChargingChanged: requestPaint()
+
+                                    onPaint: {
+                                        const ctx = getContext("2d")
+                                        ctx.reset()
+                                        const cx = width / 2, cy = height / 2, r = width / 2 - 4
+                                        ctx.lineWidth = 5
+                                        ctx.lineCap = "round"
+                                        ctx.strokeStyle = window.line
+                                        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+                                        if (level > 0) {
+                                            // Colour follows the alert levels.
+                                            ctx.strokeStyle = charging ? "#3B82F6"
+                                                            : level <= battery.secondAlertLevel ? window.danger
+                                                            : level <= battery.firstAlertLevel ? window.ambientWarm : window.success
+                                            ctx.beginPath()
+                                            ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * level / 100)
+                                            ctx.stroke()
+                                        }
+                                    }
+
+                                    Glyph {
+                                        anchors.centerIn: parent
+                                        path: window.icons.bolt
+                                        size: 18
+                                        weight: 2
+                                        color: controller.isCharging ? "#3B82F6" : window.txtFaint
+                                    }
+                                }
+                            }
+                        }
+
+                        // Time left
+                        Card {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 108
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 18
+                                spacing: 2
+                                Text { textFormat: Text.PlainText; text: "Time left"; color: window.txtFaint; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    text: battery.hoursLeft >= 0 ? "~" + batteryTiles.hoursText(battery.hoursLeft) : "—"
+                                    color: window.txt
+                                    font.pixelSize: 26
+                                    font.weight: Font.DemiBold
+                                }
+                                // Share of a full charge still to go.
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.topMargin: 3
+                                    Layout.bottomMargin: 3
+                                    implicitHeight: 5
+                                    radius: 2.5
+                                    color: window.surfaceSunk
+                                    border.width: 1
+                                    border.color: window.line
+                                    Rectangle {
+                                        height: parent.height
+                                        radius: parent.radius
+                                        width: battery.hoursLeft >= 0 && batteryTiles.fullHours > 0
+                                               ? parent.width * Math.min(1, battery.hoursLeft / batteryTiles.fullHours) : 0
+                                        color: window.success
+                                        Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+                                    }
+                                }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    Layout.fillWidth: true
+                                    text: battery.hoursLeft >= 0
+                                          ? "Non-stop until ≈ " + batteryTiles.emptyAt() + (battery.estimateSource === "rated" ? " (rated)" : "")
+                                          : controller.isCharging ? "Not while charging" : "Needs a connected headset"
+                                    color: window.txtDim
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+
+                        // Full charge
+                        Card {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 108
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 18
+                                spacing: 2
+                                Text { textFormat: Text.PlainText; text: "Full charge"; color: window.txtFaint; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    text: controller.connected ? batteryTiles.hoursText(batteryTiles.fullHours) : "—"
+                                    color: window.txt
+                                    font.pixelSize: 26
+                                    font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    Layout.fillWidth: true
+                                    text: batteryTiles.measuredFull > 0 ? "Measured from your use" : "Sony's rating"
+                                    color: window.txtDim
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    textFormat: Text.PlainText
+                                    Layout.fillWidth: true
+                                    text: (batteryTiles.measuredFull > 0 ? "Rated " + Math.round(battery.ratedHours) + " h, " : "")
+                                          + "noise cancelling " + batteryTiles.ncState
+                                    color: window.txtFaint
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
                     }
 
-                    // History chart
+                    // Time on per day
                     Card {
+                        id: usageCard
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumHeight: 200
 
-                        Canvas {
-                            id: batteryChart
+                        readonly property var days: battery.dailyUsage
+                        readonly property real maxHours: {
+                            let m = 1
+                            for (const d of days) m = Math.max(m, d.hours)
+                            return m
+                        }
+                        readonly property real avgHours: {
+                            let sum = 0, n = 0
+                            for (const d of days) if (d.hours > 0) { sum += d.hours; ++n }
+                            return n ? sum / n : 0
+                        }
+                        // Stacking order, bottom up. "unknown" is history from before modes were recorded.
+                        readonly property var modes: [
+                            { key: "cancelling", label: "Noise cancelling", color: window.accent },
+                            { key: "ambient",    label: "Ambient",          color: window.ambientWarm },
+                            { key: "off",        label: "Off",              color: window.txtDim },
+                            { key: "unknown",    label: "Not recorded",     color: window.lineHi }
+                        ]
+                        readonly property bool hasUnknown: {
+                            for (const d of days) if (d.unknown > 0) return true
+                            return false
+                        }
+
+                        ColumnLayout {
                             anchors.fill: parent
-                            anchors.margins: 18
-                            anchors.leftMargin: 44
-                            anchors.bottomMargin: 34
+                            anchors.margins: 20
+                            spacing: 14
 
-                            readonly property real span: 48 * 3600 * 1000
-                            property real nowMs: Date.now()
-
-                            Timer { interval: 60000; running: batteryChart.visible; repeat: true; onTriggered: { batteryChart.nowMs = Date.now(); batteryChart.requestPaint() } }
-                            Connections { target: battery; function onHistoryChanged() { batteryChart.nowMs = Date.now(); batteryChart.requestPaint() } }
-                            onWidthChanged: requestPaint()
-                            onHeightChanged: requestPaint()
-                            onVisibleChanged: if (visible) { nowMs = Date.now(); requestPaint() }
-
-                            onPaint: {
-                                const ctx = getContext("2d")
-                                ctx.reset()
-                                const w = width, h = height
-                                const x = t => (t - (nowMs - span)) / span * w
-                                const y = level => h - level / 100 * h
-
-                                // Gridlines at 0 / 50 / 100 %.
-                                ctx.strokeStyle = window.line
-                                ctx.lineWidth = 1
-                                for (const level of [0, 50, 100]) {
-                                    ctx.beginPath(); ctx.moveTo(0, y(level) + 0.5); ctx.lineTo(w, y(level) + 0.5); ctx.stroke()
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 5
+                                Text { textFormat: Text.PlainText; text: "Time on per day"; color: window.txt; font.pixelSize: 14; font.weight: Font.DemiBold }
+                                Item { Layout.fillWidth: true }
+                                Repeater {
+                                    model: usageCard.modes
+                                    RowLayout {
+                                        required property var modelData
+                                        visible: modelData.key !== "unknown" || usageCard.hasUnknown
+                                        Layout.rightMargin: 8
+                                        spacing: 5
+                                        Rectangle { implicitWidth: 8; implicitHeight: 8; radius: 2; color: parent.modelData.color }
+                                        Text { textFormat: Text.PlainText; text: parent.modelData.label; color: window.txtFaint; font.pixelSize: 11 }
+                                    }
                                 }
-
-                                // One line per connected stretch; charging stretches in blue.
-                                const pts = battery.history
-                                ctx.lineWidth = 2.5
-                                ctx.lineJoin = "round"
-                                for (let i = 1; i < pts.length; ++i) {
-                                    const a = pts[i - 1], b = pts[i]
-                                    if (a.level < 0 || b.level < 0) continue
-                                    ctx.strokeStyle = (a.charging || b.charging) ? "#3B82F6" : window.success
-                                    ctx.beginPath()
-                                    ctx.moveTo(x(a.t), y(a.level))
-                                    ctx.lineTo(x(b.t), y(a.level))   // step: the level holds until the next reading
-                                    ctx.lineTo(x(b.t), y(b.level))
-                                    ctx.stroke()
-                                }
-                                // Extend the latest reading to now while connected.
-                                const last = pts.length ? pts[pts.length - 1] : null
-                                if (last && last.level >= 0 && controller.connected) {
-                                    ctx.strokeStyle = last.charging ? "#3B82F6" : window.success
-                                    ctx.beginPath(); ctx.moveTo(x(last.t), y(last.level)); ctx.lineTo(w, y(last.level)); ctx.stroke()
-                                    ctx.fillStyle = ctx.strokeStyle
-                                    ctx.beginPath(); ctx.arc(w - 1, y(last.level), 4, 0, 2 * Math.PI); ctx.fill()
-                                }
-                            }
-
-                            // Axis labels
-                            Repeater {
-                                model: [100, 50, 0]
+                                Glyph { path: window.icons.bolt; size: 13; color: "#3B82F6" }
+                                Text { textFormat: Text.PlainText; text: "charged"; color: window.txtFaint; font.pixelSize: 11 }
                                 Text {
-                                    required property int modelData
+                                    Layout.leftMargin: 12
                                     textFormat: Text.PlainText
-                                    x: -36
-                                    y: batteryChart.height - modelData / 100 * batteryChart.height - height / 2
-                                    width: 28
-                                    horizontalAlignment: Text.AlignRight
-                                    text: modelData + "%"
+                                    text: "Last 7 days" + (usageCard.avgHours > 0 ? " · avg " + usageCard.avgHours.toFixed(1) + " h" : "")
                                     color: window.txtFaint
-                                    font.pixelSize: 10
+                                    font.pixelSize: 11
                                 }
                             }
-                            Repeater {
-                                model: [{ f: 0, t: "48 h ago" }, { f: 0.5, t: "24 h ago" }, { f: 1, t: "now" }]
-                                Text {
-                                    required property var modelData
-                                    textFormat: Text.PlainText
-                                    x: modelData.f * batteryChart.width - (modelData.f === 0 ? 0 : modelData.f === 1 ? width : width / 2)
-                                    y: batteryChart.height + 10
-                                    text: modelData.t
-                                    color: window.txtFaint
-                                    font.pixelSize: 10
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                spacing: 12
+
+                                Repeater {
+                                    model: usageCard.days
+
+                                    ColumnLayout {
+                                        id: dayCol
+                                        required property var modelData
+                                        required property int index
+                                        readonly property bool today: index === usageCard.days.length - 1
+                                        readonly property real hours: modelData.hours
+                                        Layout.fillWidth: true
+                                        Layout.preferredWidth: 1
+                                        Layout.fillHeight: true
+                                        spacing: 6
+
+                                        // Bar stacked by noise control, its total on top, and a bolt on days it charged.
+                                        Item {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+
+                                            Item {
+                                                id: bar
+                                                anchors.bottom: parent.bottom
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                width: Math.min(parent.width, 44)
+                                                height: Math.max(dayCol.hours > 0 ? 4 : 2, (parent.height - 44) * dayCol.hours / usageCard.maxHours)
+                                                opacity: dayCol.today ? 1 : 0.6
+                                                Behavior on height { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+
+                                                readonly property int parts: {
+                                                    let n = 0
+                                                    for (const m of usageCard.modes) if (dayCol.modelData[m.key] > 0) ++n
+                                                    return n
+                                                }
+
+                                                Rectangle {
+                                                    anchors.fill: parent
+                                                    visible: dayCol.hours <= 0
+                                                    radius: 1
+                                                    color: window.line
+                                                }
+
+                                                Column {
+                                                    anchors.bottom: parent.bottom
+                                                    width: parent.width
+                                                    spacing: 2
+                                                    Repeater {
+                                                        model: usageCard.modes.slice().reverse()
+                                                        Rectangle {
+                                                            required property var modelData
+                                                            readonly property real value: dayCol.modelData[modelData.key]
+                                                            visible: value > 0 && dayCol.hours > 0
+                                                            width: parent.width
+                                                            height: Math.max(2, (bar.height - 2 * (bar.parts - 1)) * value / dayCol.hours)
+                                                            radius: Math.min(6, height / 2)
+                                                            color: modelData.color
+                                                        }
+                                                    }
+                                                }
+
+                                                MouseArea {
+                                                    id: barHover
+                                                    anchors.fill: parent
+                                                    anchors.topMargin: -24   // include the label above
+                                                    hoverEnabled: true
+                                                }
+                                                ToolTip.visible: barHover.containsMouse && dayCol.hours > 0
+                                                ToolTip.delay: 150
+                                                ToolTip.text: {
+                                                    const lines = []
+                                                    for (const m of usageCard.modes)
+                                                        if (dayCol.modelData[m.key] > 0)
+                                                            lines.push(m.label + ": " + batteryTiles.hoursText(dayCol.modelData[m.key]))
+                                                    return lines.join("\n")
+                                                }
+                                            }
+                                            Text {
+                                                anchors.horizontalCenter: bar.horizontalCenter
+                                                anchors.bottom: bar.top
+                                                anchors.bottomMargin: 5
+                                                visible: dayCol.hours > 0
+                                                textFormat: Text.PlainText
+                                                text: batteryTiles.hoursText(dayCol.hours)
+                                                color: dayCol.today ? window.txt : window.txtDim
+                                                font.pixelSize: 11
+                                                font.weight: Font.DemiBold
+                                            }
+                                            Glyph {
+                                                anchors.horizontalCenter: bar.horizontalCenter
+                                                anchors.bottom: bar.top
+                                                anchors.bottomMargin: dayCol.hours > 0 ? 22 : 6
+                                                visible: dayCol.modelData.charged
+                                                path: window.icons.bolt
+                                                size: 14
+                                                color: "#3B82F6"
+                                            }
+                                        }
+                                        Text {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            textFormat: Text.PlainText
+                                            text: dayCol.today ? "Today" : Qt.formatDate(new Date(dayCol.modelData.day), "ddd")
+                                            color: dayCol.today ? window.txt : window.txtFaint
+                                            font.pixelSize: 11
+                                            font.weight: dayCol.today ? Font.DemiBold : Font.Normal
+                                        }
+                                    }
                                 }
                             }
-                            Text {
-                                anchors.centerIn: parent
-                                visible: battery.history.length < 2
-                                textFormat: Text.PlainText
-                                text: "History builds up while the app runs with your headphones connected."
-                                color: window.txtFaint
-                                font.pixelSize: 12
-                            }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            visible: usageCard.avgHours === 0
+                            textFormat: Text.PlainText
+                            text: "Usage builds up while the app runs with your headphones connected."
+                            color: window.txtFaint
+                            font.pixelSize: 12
                         }
                     }
 
                     // Alerts
                     Card {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 76
+                        Layout.preferredHeight: 104
 
                         RowLayout {
                             anchors.fill: parent
@@ -2235,7 +2564,7 @@ ApplicationWindow {
                             anchors.rightMargin: 20
                             spacing: 15
 
-                            Glyph { path: window.icons.bolt; size: 20; color: window.accentSoft }
+                            Glyph { Layout.alignment: Qt.AlignTop; Layout.topMargin: 22; path: window.icons.bolt; size: 20; color: window.accentSoft }
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 3
@@ -2243,112 +2572,53 @@ ApplicationWindow {
                                 Text {
                                     textFormat: Text.PlainText
                                     Layout.fillWidth: true
-                                    text: "Notifies at " + Math.round(alertRange.second.value) + "% and "
-                                          + Math.round(alertRange.first.value) + "%, and when fully charged."
+                                    text: battery.alertsEnabled
+                                          ? "Notifies at " + battery.firstAlertLevel + "% and " + battery.secondAlertLevel + "%"
+                                            + (battery.fullChargeAlert ? ", and when fully charged." : ".")
+                                          : "Off. No battery notifications."
                                     color: window.txtDim
                                     font.pixelSize: 12
                                     elide: Text.ElideRight
                                 }
+                                NeoCheck {
+                                    Layout.topMargin: 6
+                                    text: "Also when fully charged"
+                                    enabled: battery.alertsEnabled
+                                    opacity: enabled ? 1 : 0.45
+                                    checked: battery.fullChargeAlert
+                                    onToggled: battery.setFullChargeAlert(checked)
+                                }
                             }
 
-                            // Both thresholds on one track: the left handle is the second
-                            // (lower) alert, the right handle the first. Any whole percent.
-                            RangeSlider {
-                                id: alertRange
-                                Layout.preferredWidth: 280
-                                Layout.alignment: Qt.AlignVCenter
-                                from: 5; to: 95; stepSize: 1
-                                snapMode: RangeSlider.SnapAlways
-                                enabled: battery.alertsEnabled
-                                opacity: enabled ? 1 : 0.45
-                                topPadding: 18   // room for the value labels above the handles
-                                implicitHeight: 44
-
-                                first.value: battery.secondAlertLevel
-                                second.value: battery.firstAlertLevel
-
-                                // Save on release, keeping the two at least 1 % apart.
-                                function commit() {
-                                    let low = Math.round(first.value), high = Math.round(second.value)
-                                    if (low >= high) low = high - 1
-                                    battery.setAlertLevels(high, low)
-                                    first.value = Qt.binding(function() { return battery.secondAlertLevel })
-                                    second.value = Qt.binding(function() { return battery.firstAlertLevel })
+                            ColumnLayout {
+                                spacing: 5
+                                Text { textFormat: Text.PlainText; text: "First"; color: window.txtFaint; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                NeoStepper {
+                                    enabled: battery.alertsEnabled
+                                    value: battery.firstAlertLevel
+                                    from: battery.secondAlertLevel + 1
+                                    to: 95
+                                    suffix: "%"
+                                    tint: window.ambientWarm
+                                    onStepped: v => battery.setAlertLevels(v, battery.secondAlertLevel)
                                 }
-                                first.onPressedChanged: if (!first.pressed) commit()
-                                second.onPressedChanged: if (!second.pressed) commit()
-
-                                background: Rectangle {
-                                    x: alertRange.leftPadding
-                                    y: alertRange.topPadding + alertRange.availableHeight / 2 - height / 2
-                                    width: alertRange.availableWidth
-                                    height: 6
-                                    radius: 3
-                                    color: window.surfaceSunk
-                                    border.width: 1
-                                    border.color: window.line
-
-                                    // Below the second alert: red. Between the two: amber.
-                                    Rectangle {
-                                        width: alertRange.first.visualPosition * parent.width
-                                        height: parent.height
-                                        radius: 3
-                                        color: window.danger
-                                        opacity: 0.8
-                                    }
-                                    Rectangle {
-                                        x: alertRange.first.visualPosition * parent.width
-                                        width: (alertRange.second.visualPosition - alertRange.first.visualPosition) * parent.width
-                                        height: parent.height
-                                        color: window.ambientWarm
-                                        opacity: 0.8
-                                    }
-                                }
-
-                                first.handle: Rectangle {
-                                    x: alertRange.leftPadding + alertRange.first.visualPosition * (alertRange.availableWidth - width)
-                                    y: alertRange.topPadding + alertRange.availableHeight / 2 - height / 2
-                                    width: 18; height: 18; radius: 9
-                                    color: "white"
-                                    border.width: 2
-                                    border.color: window.danger
-                                    scale: alertRange.first.pressed ? 1.25 : (alertRange.first.hovered ? 1.12 : 1.0)
-                                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
-                                    Text {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        anchors.bottom: parent.top
-                                        anchors.bottomMargin: 4
-                                        textFormat: Text.PlainText
-                                        text: Math.round(alertRange.first.value) + "%"
-                                        color: window.txt
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-                                }
-
-                                second.handle: Rectangle {
-                                    x: alertRange.leftPadding + alertRange.second.visualPosition * (alertRange.availableWidth - width)
-                                    y: alertRange.topPadding + alertRange.availableHeight / 2 - height / 2
-                                    width: 18; height: 18; radius: 9
-                                    color: "white"
-                                    border.width: 2
-                                    border.color: window.ambientWarm
-                                    scale: alertRange.second.pressed ? 1.25 : (alertRange.second.hovered ? 1.12 : 1.0)
-                                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
-                                    Text {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        anchors.bottom: parent.top
-                                        anchors.bottomMargin: 4
-                                        textFormat: Text.PlainText
-                                        text: Math.round(alertRange.second.value) + "%"
-                                        color: window.txt
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
+                            }
+                            ColumnLayout {
+                                spacing: 5
+                                Text { textFormat: Text.PlainText; text: "Second"; color: window.txtFaint; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                NeoStepper {
+                                    enabled: battery.alertsEnabled
+                                    value: battery.secondAlertLevel
+                                    from: 5
+                                    to: battery.firstAlertLevel - 1
+                                    suffix: "%"
+                                    tint: window.danger
+                                    onStepped: v => battery.setAlertLevels(battery.firstAlertLevel, v)
                                 }
                             }
 
                             NeoSwitch {
+                                Layout.leftMargin: 6
                                 confirmedChecked: battery.alertsEnabled
                                 onToggled: battery.setAlertsEnabled(checked)
                             }

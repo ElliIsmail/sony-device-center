@@ -77,6 +77,33 @@ private slots:
         QCOMPARE(sony::devicecenter::BatteryMonitor::estimateFromUsage(short_, 89), -1.0);
     }
 
+    void batteryUsageByDayCountsConnectedTimePerDay() {
+        using Sample = sony::devicecenter::BatteryMonitor::Sample;
+        const QDateTime noon(QDate(2026, 3, 10), QTime(12, 0));
+        const qint64 t = noon.toSecsSinceEpoch();
+        QVector<Sample> samples;
+        // Yesterday: charged, then one hour of use at 5 min heartbeats, then a long gap.
+        samples.push_back({t - 86400 - 600, 60, true});
+        for (int i = 0; i <= 12; ++i) samples.push_back({t - 86400 + i * 300, 90 - i, false});
+        // Today: 20 minutes with noise cancelling, then 15 in ambient, then a disconnect.
+        using Mode = sony::devicecenter::BatteryMonitor::Mode;
+        for (int i = 0; i <= 6; ++i)
+            samples.push_back({t + i * 300, 70 - i, false, i < 4 ? Mode::Cancelling : Mode::Ambient});
+        samples.push_back({t + 7 * 300, -1, false});
+
+        const auto days = sony::devicecenter::BatteryMonitor::usageByDay(samples, t + 3600, 7);
+        QCOMPARE(days.size(), 7);
+        QCOMPARE(days[6].dayStart, QDateTime(QDate(2026, 3, 10), QTime(0, 0)).toSecsSinceEpoch());
+        QCOMPARE(days[6].hours, 35.0 / 60);   // six steps plus the step into the disconnect marker
+        QVERIFY(!days[6].charged);
+        QCOMPARE(days[6].cancelling, 20.0 / 60);
+        QCOMPARE(days[6].ambient, 15.0 / 60);
+        QCOMPARE(days[5].unknown, 1.0);        // recorded before modes were
+        QCOMPARE(days[5].hours, 1.0);
+        QVERIFY(days[5].charged);
+        QCOMPARE(days[0].hours, 0.0);
+    }
+
     void destructionDrainsWorkerAndCallbacks() {
         auto service = std::make_shared<SlowService>();
         auto controller = std::make_unique<DeviceCenterController>(nullptr,service);
