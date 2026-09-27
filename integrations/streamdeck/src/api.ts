@@ -12,6 +12,8 @@ export type Status = {
 	device: string;
 	battery: number | null;
 	charging: boolean;
+	/** Estimated hours until empty; null (or absent, older apps) while charging or unknown. */
+	hoursLeft?: number | null;
 	noiseControl: NoiseControl;
 	ambientLevel: number;
 	/** null when the model has no Speak-to-Chat. */

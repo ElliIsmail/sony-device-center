@@ -52,18 +52,31 @@ export function batteryColor(level: number, charging: boolean): string {
 	return C.success;
 }
 
-/** Ring gauge filled to the battery level, with the percentage in the middle. */
-export function batteryKey(level: number, charging: boolean, caption: string): string {
-	const r = 50;
+/** Same rounding as the app's "Time left" tile: whole hours from 10 h, else one decimal. */
+function hoursText(hours: number): string {
+	return `${hours >= 10 ? Math.round(hours) : hours.toFixed(1)} h`;
+}
+
+/**
+ * Ring gauge filled to the battery level with the percentage in the middle,
+ * the time left (or "Charging") under it and the device name at the bottom.
+ */
+export function batteryKey(level: number, charging: boolean, hoursLeft: number | null, caption: string): string {
+	const r = 42;
 	const circumference = 2 * Math.PI * r;
 	const filled = (Math.max(0, Math.min(100, level)) / 100) * circumference;
 	const color = batteryColor(level, charging);
-	const ring = `<circle cx="72" cy="62" r="${r}" fill="none" stroke="${C.track}" stroke-width="9"/>`
-		+ `<circle cx="72" cy="62" r="${r}" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round"`
-		+ ` stroke-dasharray="${filled} ${circumference}" transform="rotate(-90 72 62)"/>`;
-	const number = label(String(level), 76, level >= 100 ? 40 : 46, C.text, 700);
-	const unit = charging ? glyph(GLYPH.bolt, color, 63, 84, 18, true) : label("%", 98, 16, C.dim);
-	return toDataUrl(ring + number + unit + label(caption, 138, 15, C.dim));
+	const ring = `<circle cx="72" cy="54" r="${r}" fill="none" stroke="${C.track}" stroke-width="8"/>`
+		+ `<circle cx="72" cy="54" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round"`
+		+ ` stroke-dasharray="${filled} ${circumference}" transform="rotate(-90 72 54)"/>`;
+	const number = label(String(level), 66, level >= 100 ? 34 : 38, C.text, 700);
+	const unit = charging ? glyph(GLYPH.bolt, color, 65, 72, 14, true) : label("%", 86, 14, C.dim);
+	const time = charging
+		? label("Charging", 118, 16, color)
+		: hoursLeft !== null
+			? label(`~${hoursText(hoursLeft)} left`, 118, 17, C.text)
+			: "";
+	return toDataUrl(ring + number + unit + time + label(caption, 138, 14, C.dim));
 }
 
 /** Grey key for "app not running" / "headphones disconnected" / unsupported. */

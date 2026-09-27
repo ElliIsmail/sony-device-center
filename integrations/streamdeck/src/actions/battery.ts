@@ -11,7 +11,7 @@ export class BatteryAction extends StatusAction {
 	protected image(s: Snapshot): string {
 		if (!s.reachable) return idleKey(glyphs.power, "App off", "Start the app");
 		if (!s.connected || s.battery === null) return idleKey(glyphs.power, "Offline", s.device || "Headphones");
-		return batteryKey(s.battery, s.charging, s.device.replace(/^WH-|^WF-/, ""));
+		return batteryKey(s.battery, s.charging, s.hoursLeft ?? null, s.device.replace(/^WH-|^WF-/, ""));
 	}
 
 	override async onKeyDown(_ev: KeyDownEvent): Promise<void> {

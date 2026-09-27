@@ -29,6 +29,7 @@ reach it while the app is open (or sitting in the tray).
   "device": "WH-1000XM4",
   "battery": 100,
   "charging": false,
+  "hoursLeft": 22.4,
   "noiseControl": "cancelling",
   "ambientLevel": 10,
   "speakToChat": false
@@ -38,6 +39,7 @@ reach it while the app is open (or sitting in the tray).
 | Field | Meaning |
 | --- | --- |
 | `battery` | 0–100, or `null` while disconnected or unknown |
+| `hoursLeft` | Estimated hours until empty (the app's "Time left"), or `null` while charging, disconnected or not yet estimated |
 | `noiseControl` | `cancelling`, `ambient`, `off` or `unknown` |
 | `ambientLevel` | 1–20, the level Ambient Sound uses |
 | `speakToChat` | `true`/`false`, or `null` when the model has no Speak-to-Chat |

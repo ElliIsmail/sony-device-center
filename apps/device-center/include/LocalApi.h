@@ -9,6 +9,7 @@ class QTcpSocket;
 
 namespace sony::devicecenter {
 
+class BatteryMonitor;
 class DeviceCenterController;
 
 // Minimal HTTP/1.1 API on 127.0.0.1 so local tools (the Stream Deck plugin)
@@ -27,6 +28,9 @@ public:
     explicit LocalApi(DeviceCenterController* controller, QObject* parent = nullptr);
     ~LocalApi() override;
 
+    // Source of the "hoursLeft" estimate in /status; null until set.
+    void setBatteryMonitor(BatteryMonitor* battery) { _battery = battery; }
+
 private:
     struct Response {
         int status{200};
@@ -41,6 +45,7 @@ private:
     static void _reply(QTcpSocket* socket, const Response& response);
 
     DeviceCenterController* _controller;
+    BatteryMonitor* _battery{nullptr};
     QTcpServer* _server{nullptr};
     QHash<QTcpSocket*, QByteArray> _buffers;
 };

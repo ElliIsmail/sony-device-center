@@ -1,4 +1,5 @@
 #include "LocalApi.h"
+#include "BatteryMonitor.h"
 #include "DeviceCenterController.h"
 
 #include <QHostAddress>
@@ -154,12 +155,14 @@ LocalApi::Response LocalApi::_handle(const QByteArray& method, const QByteArray&
 QByteArray LocalApi::_status() const {
     const bool connected = _controller->isConnected();
     const int battery = _controller->batteryLevel();
+    const double hoursLeft = connected && _battery ? _battery->hoursLeft() : -1;
     QJsonObject status{
         {"ok", true},
         {"connected", connected},
         {"device", _controller->deviceName()},
         {"battery", connected && battery >= 0 ? QJsonValue(battery) : QJsonValue()},
         {"charging", connected && _controller->isCharging()},
+        {"hoursLeft", hoursLeft >= 0 ? QJsonValue(qRound(hoursLeft * 10) / 10.0) : QJsonValue()},
         {"noiseControl", connected ? _controller->noiseControlMode() : QStringLiteral("unknown")},
         {"ambientLevel", _controller->ambientLevel()},
         {"speakToChat", _controller->hasSpeakToChat() ? QJsonValue(_controller->speakToChat()) : QJsonValue()},

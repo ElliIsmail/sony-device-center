@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
     // Local HTTP API for the Stream Deck plugin; follows the Settings switch.
     sony::devicecenter::LocalApi localApi(&controller);
     sony::devicecenter::BatteryMonitor battery(&controller);
+    localApi.setBatteryMonitor(&battery);
     sony::devicecenter::CallMonitor calls(&controller);
     sony::devicecenter::HotkeyManager hotkeys(&controller);
 
