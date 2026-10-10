@@ -29,12 +29,21 @@
 			"Controllers": ["Keypad"],
 			"DisableAutomaticStates": true,
 			"States": [{ "Image": "imgs/actions/speak-to-chat", "ShowTitle": false }]
+		},
+		{
+			"Name": "HyperX Battery",
+			"UUID": "com.sonydevicecenter.hyperx-battery",
+			"Icon": "imgs/actions/battery",
+			"Tooltip": "Live battery level of a HyperX Cloud III S Wireless, read from its USB dongle. Works without the desktop app.",
+			"Controllers": ["Keypad"],
+			"DisableAutomaticStates": true,
+			"States": [{ "Image": "imgs/actions/battery", "ShowTitle": false }]
 		}
 	],
 	"Category": "Sony Device Center",
 	"CategoryIcon": "imgs/plugin/category-icon",
 	"CodePath": "bin/plugin.js",
-	"Description": "Battery, noise control and Speak-to-Chat for Sony headphones, through the Sony Device Center desktop app.",
+	"Description": "Battery, noise control and Speak-to-Chat for Sony headphones, through the Sony Device Center desktop app, plus a battery key for the HyperX Cloud III S Wireless.",
 	"Icon": "imgs/plugin/marketplace",
 	"SDKVersion": 3,
 	"Software": { "MinimumVersion": "7.1" },
